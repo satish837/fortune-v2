@@ -18,6 +18,7 @@ import {
   faWhatsapp,
 } from "@fortawesome/free-brands-svg-icons";
 import { toast } from "@/hooks/use-toast";
+import { convertWebMToMP4, loadFFmpeg, isFFmpegSupported } from "@/lib/videoConverter";
 // In dev, Vite's error overlay can crash when console logs receive complex/circular objects.
 // Patch console.error to safely serialize arguments to primitives to avoid the overlay throwing.
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -451,6 +452,7 @@ export default function Create() {
   const [videoGenerationError, setVideoGenerationError] = useState<
     string | null
   >(null);
+  const [isConvertingVideo, setIsConvertingVideo] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isPageCrashed, setIsPageCrashed] = useState(false);
   const [memoryUsage, setMemoryUsage] = useState<number | null>(null);
@@ -801,6 +803,11 @@ export default function Create() {
 
     loadCloudinaryConfig();
     loadCustomFont();
+    
+    // Preload FFmpeg for video conversion
+    if (isFFmpegSupported()) {
+      loadFFmpeg().catch(console.error);
+    }
   }, []);
 
   // VIDEO FUNCTIONALITY COMMENTED OUT
@@ -3784,28 +3791,78 @@ export default function Create() {
           }
         };
         
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `diwali-postcard-${Date.now()}.webm`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
+        mediaRecorder.onstop = async () => {
+          const webmBlob = new Blob(chunks, { type: 'video/webm' });
           
-          // Cleanup video element to prevent memory leaks
-          backgroundVideo.pause();
-          backgroundVideo.src = '';
-          backgroundVideo.load();
-          
-          toast({
-            title: "Video downloaded!",
-            description: "Your festive postcard video has been saved to your device.",
-          });
-          
-          resolve();
+          try {
+            // Check if FFmpeg is supported
+            if (isFFmpegSupported()) {
+              setIsConvertingVideo(true);
+              toast({
+                title: "Converting video...",
+                description: "Converting WebM to MP4 format for better compatibility.",
+              });
+              
+              // Convert WebM to MP4
+              const mp4Blob = await convertWebMToMP4(webmBlob);
+              
+              // Download MP4
+              const url = URL.createObjectURL(mp4Blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `diwali-postcard-${Date.now()}.mp4`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              
+              toast({
+                title: "Video downloaded!",
+                description: "Your festive postcard video (MP4) has been saved to your device.",
+              });
+            } else {
+              // Fallback: Download WebM if FFmpeg is not supported
+              const url = URL.createObjectURL(webmBlob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `diwali-postcard-${Date.now()}.webm`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              
+              toast({
+                title: "Video downloaded!",
+                description: "Your festive postcard video (WebM) has been saved to your device.",
+              });
+            }
+          } catch (conversionError) {
+            console.error('Video conversion failed, downloading WebM:', conversionError);
+            
+            // Fallback: Download WebM if conversion fails
+            const url = URL.createObjectURL(webmBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `diwali-postcard-${Date.now()}.webm`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            toast({
+              title: "Video downloaded!",
+              description: "Your festive postcard video (WebM) has been saved to your device.",
+            });
+          } finally {
+            setIsConvertingVideo(false);
+            
+            // Cleanup video element to prevent memory leaks
+            backgroundVideo.pause();
+            backgroundVideo.src = '';
+            backgroundVideo.load();
+            
+            resolve();
+          }
         };
 
         // Start recording
@@ -4976,9 +5033,16 @@ export default function Create() {
                     type="button"
                     className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
                     onClick={downloadVideo}
-                    disabled={!result || !resultData || !selectedDish || !selectedBackground}
+                    disabled={!result || !resultData || !selectedDish || !selectedBackground || isConvertingVideo}
                   >
-                    Download Postcard
+                    {isConvertingVideo ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Converting to MP4...
+                      </>
+                    ) : (
+                      "Download Postcard"
+                    )}
                   </Button>
                   {(!result || !resultData || !selectedDish || !selectedBackground) && (
                     <span className="text-xs text-gray-500 text-center sm:text-left">
