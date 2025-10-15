@@ -806,7 +806,12 @@ export default function Create() {
     
     // Preload FFmpeg for video conversion
     if (isFFmpegSupported()) {
-      loadFFmpeg().catch(console.error);
+      console.log('🔄 Preloading FFmpeg...');
+      loadFFmpeg().catch((error) => {
+        console.error('❌ Failed to preload FFmpeg:', error);
+      });
+    } else {
+      console.log('❌ FFmpeg not supported in this browser');
     }
   }, []);
 
@@ -3796,7 +3801,10 @@ export default function Create() {
           
           try {
             // Check if FFmpeg is supported
+            console.log('🔍 Checking FFmpeg support:', isFFmpegSupported());
+            
             if (isFFmpegSupported()) {
+              console.log('✅ FFmpeg is supported, starting conversion...');
               setIsConvertingVideo(true);
               toast({
                 title: "Converting video...",
@@ -3805,6 +3813,7 @@ export default function Create() {
               
               // Convert WebM to MP4
               const mp4Blob = await convertWebMToMP4(webmBlob);
+              console.log('✅ Conversion successful, MP4 blob size:', mp4Blob.size);
               
               // Download MP4
               const url = URL.createObjectURL(mp4Blob);
@@ -3821,6 +3830,7 @@ export default function Create() {
                 description: "Your festive postcard video (MP4) has been saved to your device.",
               });
             } else {
+              console.log('❌ FFmpeg not supported, downloading WebM');
               // Fallback: Download WebM if FFmpeg is not supported
               const url = URL.createObjectURL(webmBlob);
               const link = document.createElement('a');
@@ -3837,7 +3847,7 @@ export default function Create() {
               });
             }
           } catch (conversionError) {
-            console.error('Video conversion failed, downloading WebM:', conversionError);
+            console.error('❌ Video conversion failed, downloading WebM:', conversionError);
             
             // Fallback: Download WebM if conversion fails
             const url = URL.createObjectURL(webmBlob);
