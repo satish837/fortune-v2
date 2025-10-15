@@ -15,9 +15,6 @@
     "api/verify-otp.ts": {
       "maxDuration": 30
     },
-    "api/convert-video.ts": {
-      "maxDuration": 60
-    },
     "api/existing-user-otp.ts": {
       "maxDuration": 30
     },
