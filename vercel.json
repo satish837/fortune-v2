@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist/spa",
+  "functions": {
+    "api/generate.ts": {
+      "maxDuration": 300
+    },
+    "api/cloudinary-signature.ts": {
+      "maxDuration": 30
+    },
+    "api/cloudinary-config.ts": {
+      "maxDuration": 30
+    },
+    "api/send-otp.ts": {
+      "maxDuration": 30
+    },
+    "api/verify-otp.ts": {
+      "maxDuration": 30
+    },
+    "api/existing-user-otp.ts": {
+      "maxDuration": 30
+    },
+    "api/users.ts": {
+      "maxDuration": 30
+    },
+    "api/generate-video.ts": {
+      "maxDuration": 300
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp|mp4|webm|mov|avi|woff|woff2|ttf|eot))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
