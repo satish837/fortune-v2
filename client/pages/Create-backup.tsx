@@ -635,8 +635,8 @@ export default function Create() {
 
         // Try absolute origin first (handles some proxy edge-cases), then fallback to relative
         const tryUrls = [
-          `${origin}/api/cloudinary-config`,
-          `/api/cloudinary-config`,
+          `${origin}/api/cloudinary`,
+          `/api/cloudinary`,
         ];
         for (const url of tryUrls) {
           try {
@@ -652,7 +652,7 @@ export default function Create() {
 
         if (!response) {
           throw new Error(
-            "All fetch attempts failed for /api/cloudinary-config",
+            "All fetch attempts failed for /api/cloudinary",
           );
         }
 
@@ -2590,7 +2590,7 @@ export default function Create() {
 
       const requestSignedUploadParams =
         async (): Promise<CloudinarySignatureResponse> => {
-          const response = await fetch("/api/cloudinary-signature", {
+          const response = await fetch("/api/cloudinary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -3053,7 +3053,7 @@ export default function Create() {
       const publicId = `person-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Get Cloudinary signature for signed upload
-      const signatureRes = await fetch("/api/cloudinary-signature", {
+      const signatureRes = await fetch("/api/cloudinary", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
