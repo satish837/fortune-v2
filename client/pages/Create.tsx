@@ -3871,8 +3871,8 @@ export default function Create() {
         // Small delay to ensure video is playing
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        // Animation loop - reduced duration to prevent memory issues
-        const duration = 3000; // 3 seconds (reduced from 5)
+        // Animation loop - 5 seconds duration
+        const duration = 5000; // 5 seconds
         const startTime = Date.now();
         
         const animate = () => {
