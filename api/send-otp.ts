@@ -140,7 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Send the email
       const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
       
-      console.log(`OTP email sent successfully to ${email}. Message ID: ${result.messageId}`);
+      console.log(`OTP email sent successfully to ${email}. Message ID: ${(result as any).messageId || 'N/A'}`);
       
     } catch (emailError) {
       console.error('Error sending OTP email:', emailError);

@@ -29,7 +29,7 @@ const otpStorage = {
         await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/diwali-postcard');
       }
       
-      const otpRecord = await OTP.findOne({ email });
+      const otpRecord = await OTP.findOne({ email }).exec();
       
       if (!otpRecord) {
         return null;
@@ -98,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Check if user already exists
-      const existingUser = await User.findOne({ email });
+      const existingUser = await User.findOne({ email }).exec();
       
       if (existingUser) {
         // Update existing user

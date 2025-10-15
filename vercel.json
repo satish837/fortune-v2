@@ -6,10 +6,7 @@
     "api/generate.ts": {
       "maxDuration": 300
     },
-    "api/cloudinary-signature.ts": {
-      "maxDuration": 30
-    },
-    "api/cloudinary-config.ts": {
+    "api/cloudinary.ts": {
       "maxDuration": 30
     },
     "api/send-otp.ts": {

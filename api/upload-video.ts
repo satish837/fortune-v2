@@ -109,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Upload to Cloudinary using fetch
     const formData = new FormData();
     // Use Blob for compatibility
-    const blob = new Blob([videoBuffer]);
+    const blob = new Blob([videoBuffer.buffer]);
     formData.append("file", blob, originalFilename);
     formData.append("public_id", publicId);
     formData.append("folder", "diwali-postcards/videos");
