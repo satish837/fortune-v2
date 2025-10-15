@@ -3783,10 +3783,23 @@ export default function Create() {
           backgroundVideo.load();
         });
 
-        // Set up MediaRecorder
+        // Set up MediaRecorder - try MP4 first, fallback to WebM
         const stream = canvas.captureStream(30); // 30 FPS
+        
+        // Check for MP4 support first
+        let mimeType = 'video/webm;codecs=vp9';
+        if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264')) {
+          mimeType = 'video/mp4;codecs=h264';
+          console.log('✅ Using MP4 recording with H.264 codec');
+        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+          mimeType = 'video/mp4';
+          console.log('✅ Using MP4 recording');
+        } else {
+          console.log('⚠️ MP4 not supported, using WebM');
+        }
+        
         const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'video/webm;codecs=vp9'
+          mimeType: mimeType
         });
         
         const chunks: Blob[] = [];
@@ -3797,42 +3810,65 @@ export default function Create() {
         };
         
         mediaRecorder.onstop = async () => {
-          const webmBlob = new Blob(chunks, { type: 'video/webm' });
+          const videoBlob = new Blob(chunks, { type: mimeType });
+          const isMP4 = mimeType.includes('mp4');
           
-          try {
-            // Check if FFmpeg is supported
-            console.log('🔍 Checking FFmpeg support:', isFFmpegSupported());
+          console.log(`📹 Video recorded as ${isMP4 ? 'MP4' : 'WebM'}`);
+          console.log(`📊 Video size: ${(videoBlob.size / 1024 / 1024).toFixed(2)} MB`);
+          
+          if (isMP4) {
+            // Direct MP4 download - no conversion needed
+            const url = URL.createObjectURL(videoBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `diwali-postcard-${Date.now()}.mp4`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
             
-            if (isFFmpegSupported()) {
-              console.log('✅ FFmpeg is supported, starting conversion...');
+            toast({
+              title: "Video downloaded!",
+              description: "Your festive postcard video (MP4) has been saved to your device.",
+            });
+          } else {
+            // WebM needs conversion to MP4
+            try {
+              console.log('🔄 Converting WebM to MP4...');
               setIsConvertingVideo(true);
               toast({
                 title: "Converting video...",
                 description: "Converting WebM to MP4 format for better compatibility.",
               });
+
+              // Try client-side conversion first
+              if (isFFmpegSupported()) {
+                console.log('✅ Using client-side FFmpeg conversion...');
+                const mp4Blob = await convertWebMToMP4(videoBlob);
+                console.log('✅ Conversion successful, MP4 blob size:', mp4Blob.size);
+                
+                // Download MP4
+                const url = URL.createObjectURL(mp4Blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `diwali-postcard-${Date.now()}.mp4`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                toast({
+                  title: "Video downloaded!",
+                  description: "Your festive postcard video (MP4) has been saved to your device.",
+                });
+              } else {
+                throw new Error('FFmpeg not supported');
+              }
+            } catch (conversionError) {
+              console.log('❌ Conversion failed, downloading WebM:', conversionError);
               
-              // Convert WebM to MP4
-              const mp4Blob = await convertWebMToMP4(webmBlob);
-              console.log('✅ Conversion successful, MP4 blob size:', mp4Blob.size);
-              
-              // Download MP4
-              const url = URL.createObjectURL(mp4Blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `diwali-postcard-${Date.now()}.mp4`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-              
-              toast({
-                title: "Video downloaded!",
-                description: "Your festive postcard video (MP4) has been saved to your device.",
-              });
-            } else {
-              console.log('❌ FFmpeg not supported, downloading WebM');
-              // Fallback: Download WebM if FFmpeg is not supported
-              const url = URL.createObjectURL(webmBlob);
+              // Fallback: Download WebM
+              const url = URL.createObjectURL(videoBlob);
               const link = document.createElement('a');
               link.href = url;
               link.download = `diwali-postcard-${Date.now()}.webm`;
@@ -3845,34 +3881,17 @@ export default function Create() {
                 title: "Video downloaded!",
                 description: "Your festive postcard video (WebM) has been saved to your device.",
               });
+            } finally {
+              setIsConvertingVideo(false);
             }
-          } catch (conversionError) {
-            console.error('❌ Video conversion failed, downloading WebM:', conversionError);
-            
-            // Fallback: Download WebM if conversion fails
-            const url = URL.createObjectURL(webmBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `diwali-postcard-${Date.now()}.webm`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            
-            toast({
-              title: "Video downloaded!",
-              description: "Your festive postcard video (WebM) has been saved to your device.",
-            });
-          } finally {
-            setIsConvertingVideo(false);
-            
-            // Cleanup video element to prevent memory leaks
-            backgroundVideo.pause();
-            backgroundVideo.src = '';
-            backgroundVideo.load();
-            
-            resolve();
           }
+          
+          // Cleanup video element to prevent memory leaks
+          backgroundVideo.pause();
+          backgroundVideo.src = '';
+          backgroundVideo.load();
+          
+          resolve();
         };
 
         // Start recording
