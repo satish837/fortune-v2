@@ -463,6 +463,8 @@ export default function Create() {
   } | null>(null);
   const [canvasRecordLoaded, setCanvasRecordLoaded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [imageDownloading, setImageDownloading] = useState(false);
+  const [imageDownloadError, setImageDownloadError] = useState<string | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -3296,6 +3298,176 @@ export default function Create() {
     }
   };
 
+  const downloadPostcardImage = async () => {
+    if (!result || !resultData || !selectedDish || !selectedBackground) {
+      toast({
+        title: "No postcard available",
+        description: "Please generate a postcard first before downloading the image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setImageDownloading(true);
+      setImageDownloadError(null);
+
+      // Show loading state
+      toast({
+        title: "Generating postcard image...",
+        description: "Creating your festive postcard image, this may take a moment.",
+      });
+
+      // Get the canvas element
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        throw new Error("Canvas not available");
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Canvas context not available");
+      }
+
+      // Set canvas dimensions (same as video)
+      const width = 720;
+      const height = 1280;
+      canvas.width = width;
+      canvas.height = height;
+
+      // Load images
+      const personImage = await loadHtmlImage(resultData.background_removed_image_url || resultData.image_url);
+      const dishImage = await loadHtmlImage(selectedDish.image);
+      const frameImage = await loadHtmlImage("/photo-frame-story.png");
+
+      // Calculate dimensions and positioning (same as video)
+      const frameWidth = width;
+      const frameHeight = height;
+      const personMaxWidth = frameWidth * 0.6 * 1.3; // 30% increase
+      const personMaxHeight = frameHeight * 0.7 * 1.3; // 30% increase
+      
+      const personAspectRatio = personImage.width / personImage.height;
+      const personWidth = Math.min(personMaxWidth, personMaxHeight * personAspectRatio);
+      const personHeight = personWidth / personAspectRatio;
+      
+      const personX = (width - personWidth) / 2;
+      const personY = height * 0.39 + (height * 0.3 - personHeight) / 2; // 5% higher
+
+      const dishWidth = frameWidth * 0.25;
+      const dishHeight = frameHeight * 0.25;
+      const dishX = (width - dishWidth) / 2;
+      const dishY = height * 0.75;
+
+      // Draw background (solid color)
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw person image
+      ctx.drawImage(personImage, personX, personY, personWidth, personHeight);
+
+      // Draw dish image
+      ctx.drawImage(dishImage, dishX, dishY, dishWidth, dishHeight);
+
+      // Draw frame image (original size)
+      ctx.drawImage(frameImage, 0, 0, width, height);
+
+      // Draw greeting text
+      const trimmedGreeting = greeting.trim();
+      if (trimmedGreeting) {
+        const font = getGreetingFont();
+        ctx.save();
+        ctx.font = font;
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Calculate text positioning
+        const textX = width / 2;
+        const textY = height * 0.15;
+        const maxWidth = width * 0.9;
+        const lineHeight = 40;
+        const scale = Math.min(width / 720, height / 1280);
+
+        // Draw text with shadow
+        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+        ctx.shadowBlur = 8 * scale;
+        ctx.shadowOffsetX = 2 * scale;
+        ctx.shadowOffsetY = 2 * scale;
+
+        // Split text into lines
+        const words = trimmedGreeting.split(" ");
+        const lines: string[] = [];
+        let currentLine = "";
+
+        for (const word of words) {
+          const testLine = currentLine + (currentLine ? " " : "") + word;
+          const metrics = ctx.measureText(testLine);
+          
+          if (metrics.width > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        // Draw each line
+        lines.forEach((line, index) => {
+          const startY = textY + (index - (lines.length - 1) / 2) * lineHeight;
+          ctx.strokeText(line, textX, startY);
+          ctx.fillText(line, textX, startY);
+        });
+
+        ctx.restore();
+      }
+
+      // Convert canvas to blob and download
+      await new Promise<void>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Failed to create image blob."));
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `diwali-postcard-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          resolve();
+        }, "image/png", 0.95);
+      });
+
+      // Show success message
+      toast({
+        title: "Image downloaded successfully!",
+        description: "Your Diwali postcard image has been saved to your device.",
+      });
+
+    } catch (error) {
+      console.error("Failed to download postcard image:", error);
+      setImageDownloadError(
+        error instanceof Error ? error.message : "Failed to download image"
+      );
+      toast({
+        title: "Download failed",
+        description: error instanceof Error ? error.message : "There was an error downloading your postcard image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setImageDownloading(false);
+    }
+  };
+
   // Generate client-side video using HTML5 Canvas and MediaRecorder
   const generateClientSideVideo = async (data: any) => {
     return new Promise<void>(async (resolve, reject) => {
@@ -4672,6 +4844,24 @@ export default function Create() {
                       "Download Postcard Video"
                     )}
                   </Button>
+                  
+                  {/* Download Postcard Image Button */}
+                  <Button
+                    type="button"
+                    className="h-11 px-6 bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto"
+                    onClick={downloadPostcardImage}
+                    disabled={!result || !resultData || !selectedDish || !selectedBackground || imageDownloading}
+                  >
+                    {imageDownloading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating image...
+                      </>
+                    ) : (
+                      "Download Postcard Image"
+                    )}
+                  </Button>
+                  
                   {(!result || !resultData || !selectedDish || !selectedBackground) && (
                     <span className="text-xs text-gray-500 text-center sm:text-left">
                       Generate a postcard first
@@ -4708,7 +4898,7 @@ export default function Create() {
                       background, frame, and your greeting.
                     </p>
                     <p className="text-xs text-orange-700">
-                      Use the Download Postcard Video button above to save your
+                      Use the Download Postcard Video or Download Postcard Image buttons above to save your
                       postcard.
                     </p>
                   </div>
