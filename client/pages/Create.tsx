@@ -3958,13 +3958,8 @@ export default function Create() {
           // Draw person image first (behind frame)
           ctx.drawImage(personImage, personX, personY, personWidth, personHeight);
 
-          // Draw frame image on top of everything - scaled up by 30%
-          const frameScale = 1.3; // 30% increase
-          const scaledFrameWidth = width * frameScale;
-          const scaledFrameHeight = height * frameScale;
-          const frameX = (width - scaledFrameWidth) / 2;
-          const frameY = (height - scaledFrameHeight) / 2;
-          ctx.drawImage(frameImage, frameX, frameY, scaledFrameWidth, scaledFrameHeight);
+          // Draw frame image on top of everything (original size)
+          ctx.drawImage(frameImage, 0, 0, width, height);
           
           // Debug: Log frame drawing
           if (elapsed % 1000 < 50) {
