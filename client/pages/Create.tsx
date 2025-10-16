@@ -3619,7 +3619,7 @@ export default function Create() {
 
       // Prepare request data
       const requestData = {
-        personImageUrl: resultData.image_url, // Use image_url from the API response
+        personImageUrl: resultData.background_removed_image_url || resultData.image_url, // Use background-removed image if available, fallback to original
         dishImageUrl: selectedDish.image,
         backgroundVideoUrl: selectedBackground.video,
         greeting: greeting || "Happy Diwali!",
@@ -5070,7 +5070,7 @@ export default function Create() {
                         Converting to MP4...
                       </>
                     ) : (
-                      "Download Postcard"
+                      "Download Postcard Video"
                     )}
                   </Button>
                   {(!result || !resultData || !selectedDish || !selectedBackground) && (
