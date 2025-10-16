@@ -4866,11 +4866,12 @@ export default function Create() {
                     "Download Postcard Image"
                   )}
                 </Button>
+                
 
                 {/* Generate again Button */}
                 <Button
                   type="button"
-                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto font-bold"
+                  className="h-11 px-6 border border-gray-300 text-white hover:bg-gray-900 w-full sm:w-auto font-bold"
                   onClick={() => {
                     setResult(null);
                     setResultData(null);
