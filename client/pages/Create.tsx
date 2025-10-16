@@ -4836,7 +4836,7 @@ export default function Create() {
                 {/* Download Postcard Video Button */}
                 <Button
                   type="button"
-                  className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
+                  className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto font-bold"
                   onClick={downloadVideo}
                   disabled={!result || !resultData || !selectedDish || !selectedBackground || isConvertingVideo}
                 >
@@ -4853,7 +4853,7 @@ export default function Create() {
                 {/* Download Postcard Image Button */}
                 <Button
                   type="button"
-                  className="h-11 px-6 bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto"
+                  className="h-11 px-6 bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto font-bold"
                   onClick={downloadPostcardImage}
                   disabled={!result || !resultData || !selectedDish || !selectedBackground || imageDownloading}
                 >
@@ -4870,7 +4870,7 @@ export default function Create() {
                 {/* Generate again Button */}
                 <Button
                   type="button"
-                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
+                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto font-bold"
                   onClick={() => {
                     setResult(null);
                     setResultData(null);
