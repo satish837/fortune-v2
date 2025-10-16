@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { BarChart3, LogOut } from "lucide-react";
+import { BarChart3, LogOut, Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInstagram,
@@ -463,10 +463,6 @@ export default function Create() {
   } | null>(null);
   const [canvasRecordLoaded, setCanvasRecordLoaded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [imageDownloading, setImageDownloading] = useState(false);
-  const [imageDownloadError, setImageDownloadError] = useState<string | null>(
-    null,
-  );
 
   const fileRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -2470,7 +2466,6 @@ export default function Create() {
 
     try {
       setVideoGenerationError(null);
-      setImageDownloadError(null);
       setIsRecording(true);
       recordedChunksRef.current = [];
 
@@ -2793,401 +2788,17 @@ export default function Create() {
     }
   };
 
-  const downloadPostcardImage = useCallback(async () => {
-    if (!result) {
-      setImageDownloadError("No generated postcard image available.");
-      return;
-    }
 
-    if (typeof document === "undefined") {
-      return;
-    }
 
-    try {
-      setImageDownloadError(null);
-      setImageDownloading(true);
 
-      const cardContainer = document.querySelector(
-        ".generated-card-container",
-      ) as HTMLElement | null;
 
-      if (!cardContainer) {
-        throw new Error("Generated postcard is not available on the page.");
-      }
 
-      const rect = cardContainer.getBoundingClientRect();
-      const canvas = document.createElement("canvas");
-      canvas.width = VIDEO_WIDTH;
-      canvas.height = VIDEO_HEIGHT;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Unable to create drawing context.");
-      }
 
-      const metrics = getVideoCanvasMetrics(rect);
-      const { offsetX, offsetY, drawWidth, drawHeight, scale } = metrics;
 
-      const mapRectToCanvas = (elementRect: DOMRect) => {
-        const relativeX = elementRect.left - rect.left;
-        const relativeY = elementRect.top - rect.top;
-        return {
-          x: offsetX + relativeX * scale,
-          y: offsetY + relativeY * scale,
-          width: elementRect.width * scale,
-          height: elementRect.height * scale,
-        };
-      };
 
-      const backgroundImage = cardContainer.querySelector(
-        'video[src*="background"]',
-      ) as HTMLVideoElement | null;
-      const frameElement = cardContainer.querySelector(
-        'img[alt="photo frame"]',
-      ) as HTMLImageElement | null;
-      const overlayElement = cardContainer.querySelector(
-        "[data-generated-image]",
-      ) as HTMLImageElement | null;
-      const greetingElement = cardContainer.querySelector(
-        "[data-generated-greeting]",
-      ) as HTMLElement | null;
 
-      let greetingRenderData: {
-        lines: string[];
-        font: string;
-        fillStyle: string;
-        textAlign: CanvasTextAlign;
-        textBaseline: CanvasTextBaseline;
-        textX: number;
-        startY: number;
-        lineHeight: number;
-        shadowColor: string;
-        shadowBlur: number;
-        shadowOffsetX: number;
-        shadowOffsetY: number;
-      } | null = null;
 
-      // Set transparent background instead of dark gray
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      let backgroundDrawn = false;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(offsetX, offsetY, drawWidth, drawHeight);
-      ctx.clip();
-
-      if (backgroundImage) {
-        try {
-          if (
-            backgroundImage.videoWidth > 0 &&
-            backgroundImage.videoHeight > 0
-          ) {
-            const imageRect = backgroundImage.getBoundingClientRect();
-            const { x, y, width, height } = mapRectToCanvas(imageRect);
-            ctx.drawImage(backgroundImage, x, y, width, height);
-            backgroundDrawn = true;
-          }
-        } catch (error) {
-          console.warn("⚠️ Unable to capture background frame:", error);
-        }
-      }
-
-      if (!backgroundDrawn) {
-        // Don't draw a fallback background - keep it transparent
-        // This prevents unwanted colored backgrounds in downloaded images
-
-        if (selectedBackground?.fallback) {
-          ctx.save();
-          const emojiFontSize = Math.max(48, Math.round(drawWidth * 0.35));
-          ctx.font = `${emojiFontSize}px Arial`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-          ctx.fillText(
-            selectedBackground.fallback,
-            offsetX + drawWidth / 2,
-            offsetY + drawHeight / 2,
-          );
-          ctx.restore();
-        }
-      }
-
-      const [generatedImg, frameImg] = await Promise.all([
-        loadHtmlImage(result),
-        loadHtmlImage("/photo-frame-story.png"),
-      ]);
-
-      if (overlayElement) {
-        const overlayRect = overlayElement.getBoundingClientRect();
-        const { x, y, width, height } = mapRectToCanvas(overlayRect);
-        const naturalWidth =
-          generatedImg.naturalWidth || generatedImg.width || width;
-        const naturalHeight =
-          generatedImg.naturalHeight || generatedImg.height || height;
-
-        let targetWidth = width;
-        let targetHeight = height;
-        let drawX = x;
-        let drawY = y;
-
-        if (naturalWidth > 0 && naturalHeight > 0) {
-          const sourceAspect = naturalWidth / naturalHeight;
-          const destAspect = width / height;
-
-          if (destAspect > sourceAspect) {
-            targetHeight = height;
-            targetWidth = targetHeight * sourceAspect;
-            drawX += (width - targetWidth) / 2;
-          } else {
-            targetWidth = width;
-            targetHeight = targetWidth / sourceAspect;
-            drawY += (height - targetHeight) / 2;
-          }
-        }
-
-        ctx.drawImage(generatedImg, drawX, drawY, targetWidth, targetHeight);
-      } else {
-        ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
-      }
-
-      const trimmedGreeting = greeting.trim();
-
-      if (trimmedGreeting && greetingElement && typeof window !== "undefined") {
-        const greetingRect = greetingElement.getBoundingClientRect();
-        const { x, y, width, height } = mapRectToCanvas(greetingRect);
-        const style = window.getComputedStyle(greetingElement);
-
-        const fontSize = parseFloat(style.fontSize) || 20;
-        const fontFamily = style.fontFamily || "Arial";
-        const fontWeight = style.fontWeight || "bold";
-        const lineHeightValue = parseFloat(style.lineHeight);
-        const lineHeightRatio =
-          Number.isFinite(lineHeightValue) && lineHeightValue > 0
-            ? lineHeightValue / fontSize
-            : 1.2;
-
-        const scaledFontSize = fontSize * scale;
-        const scaledLineHeight = scaledFontSize * lineHeightRatio;
-        const font = `${fontWeight} ${scaledFontSize}px ${fontFamily}`;
-        const availableWidth = width > 0 ? width : drawWidth - 80;
-
-        ctx.save();
-        ctx.font = font;
-
-        const words = trimmedGreeting.split(/\s+/);
-        const lines: string[] = [];
-        let currentLine = "";
-
-        words.forEach((word) => {
-          const candidate = currentLine ? `${currentLine} ${word}` : word;
-          if (
-            ctx.measureText(candidate).width > availableWidth &&
-            currentLine
-          ) {
-            lines.push(currentLine);
-            currentLine = word;
-          } else if (ctx.measureText(candidate).width > availableWidth) {
-            lines.push(candidate);
-            currentLine = "";
-          } else {
-            currentLine = candidate;
-          }
-        });
-
-        if (currentLine) {
-          lines.push(currentLine);
-        }
-
-        ctx.restore();
-
-        if (lines.length === 0) {
-          lines.push(trimmedGreeting);
-        }
-
-        const totalHeight = lines.length * scaledLineHeight;
-        const fallbackStartY =
-          offsetY +
-          drawHeight -
-          80 -
-          ((lines.length - 1) * scaledLineHeight) / 2;
-        const startY =
-          height > 0
-            ? y + height / 2 - (totalHeight - scaledLineHeight) / 2
-            : fallbackStartY;
-        const textX = width > 0 ? x + width / 2 : offsetX + drawWidth / 2;
-
-        greetingRenderData = {
-          lines,
-          font,
-          fillStyle: style.color || "#ffffff",
-          textAlign: "center",
-          textBaseline: "middle",
-          textX,
-          startY,
-          lineHeight: scaledLineHeight,
-          shadowColor: "rgba(0, 0, 0, 0.35)",
-          shadowBlur: 8 * scale,
-          shadowOffsetX: 2 * scale,
-          shadowOffsetY: 2 * scale,
-        };
-      } else if (trimmedGreeting) {
-        const font = getGreetingFont();
-
-        ctx.save();
-        ctx.font = font;
-
-        const maxWidth = drawWidth - 80;
-        const lineHeight = 28;
-        const words = trimmedGreeting.split(/\s+/);
-        const lines: string[] = [];
-        let currentLine = "";
-
-        words.forEach((word) => {
-          const candidate = currentLine ? `${currentLine} ${word}` : word;
-          const exceeds = ctx.measureText(candidate).width > maxWidth;
-          if (exceeds && currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
-          } else if (exceeds) {
-            lines.push(candidate);
-            currentLine = "";
-          } else {
-            currentLine = candidate;
-          }
-        });
-
-        if (currentLine) {
-          lines.push(currentLine);
-        }
-
-        ctx.restore();
-
-        if (lines.length === 0) {
-          lines.push(trimmedGreeting);
-        }
-
-        const baseY =
-          offsetY + drawHeight - 80 - ((lines.length - 1) * lineHeight) / 2;
-
-        greetingRenderData = {
-          lines,
-          font,
-          fillStyle: "#ffffff",
-          textAlign: "center",
-          textBaseline: "middle",
-          textX: VIDEO_WIDTH / 2,
-          startY: baseY,
-          lineHeight,
-          shadowColor: "rgba(0, 0, 0, 0.35)",
-          shadowBlur: 8,
-          shadowOffsetX: 2,
-          shadowOffsetY: 2,
-        };
-      }
-
-      ctx.restore();
-
-      if (frameElement) {
-        const frameRect = frameElement.getBoundingClientRect();
-        const { x, y, width, height } = mapRectToCanvas(frameRect);
-        ctx.drawImage(frameImg, x, y, width, height);
-      } else {
-        ctx.drawImage(frameImg, offsetX, offsetY, drawWidth, drawHeight);
-      }
-
-      if (greetingRenderData) {
-        const {
-          lines,
-          font,
-          fillStyle,
-          textAlign,
-          textBaseline,
-          textX,
-          startY,
-          lineHeight,
-          shadowColor,
-          shadowBlur,
-          shadowOffsetX,
-          shadowOffsetY,
-        } = greetingRenderData;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(offsetX, offsetY, drawWidth, drawHeight);
-        ctx.clip();
-
-        ctx.fillStyle = fillStyle;
-        ctx.font = font;
-        ctx.textAlign = textAlign;
-        ctx.textBaseline = textBaseline;
-        ctx.shadowColor = shadowColor;
-        ctx.shadowBlur = shadowBlur;
-        ctx.shadowOffsetX = shadowOffsetX;
-        ctx.shadowOffsetY = shadowOffsetY;
-
-        lines.forEach((line, index) => {
-          ctx.fillText(line, textX, startY + index * lineHeight);
-        });
-
-        ctx.restore();
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            reject(new Error("Failed to create image blob."));
-            return;
-          }
-
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `diwali-postcard-${Date.now()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          setTimeout(() => URL.revokeObjectURL(url), 500);
-          resolve();
-        }, "image/png");
-      });
-
-      try {
-        toast({
-          title: "Postcard image downloaded",
-          description: "Your festive postcard image is saved to your device.",
-        });
-      } catch (toastError) {
-        console.warn("Toast invocation failed:", toastError);
-      }
-    } catch (error) {
-      console.error("Failed to download postcard image:", error);
-      setImageDownloadError(
-        error instanceof Error
-          ? error.message
-          : "Failed to download postcard image.",
-      );
-      try {
-        toast({
-          title: "Download failed",
-          description:
-            "Unable to prepare the postcard image. Please try again.",
-        });
-      } catch (toastError) {
-        console.warn("Toast invocation failed:", toastError);
-      }
-    } finally {
-      setImageDownloading(false);
-    }
-  }, [
-    getGreetingFont,
-    greeting,
-    loadHtmlImage,
-    result,
-    selectedBackground,
-    waitForVideoFrame,
-  ]);
 
   const uploadVideoToCloudinary = async (videoUrl: string | Blob) => {
     try {
@@ -5048,24 +4659,6 @@ export default function Create() {
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
                   <Button
                     type="button"
-                    className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700 w-full sm:w-auto"
-                    onClick={downloadPostcardImage}
-                    disabled={imageDownloading}
-                  >
-                    {imageDownloading
-                      ? "Preparing image..."
-                      : "Download Postcard Image"}
-                  </Button>
-                  {imageDownloadError && (
-                    <span className="text-xs text-red-600 text-center sm:text-left">
-                      {imageDownloadError}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2 w-full sm:w-auto">
-                  <Button
-                    type="button"
                     className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
                     onClick={downloadVideo}
                     disabled={!result || !resultData || !selectedDish || !selectedBackground || isConvertingVideo}
@@ -5097,8 +4690,6 @@ export default function Create() {
                     setRecordedVideoBlob(null);
                     setCloudinaryVideoUrl(null);
                     setVideoGenerationError(null);
-                    setImageDownloadError(null);
-                    setImageDownloading(false);
                   }}
                 >
                   Generate again
@@ -5117,7 +4708,7 @@ export default function Create() {
                       background, frame, and your greeting.
                     </p>
                     <p className="text-xs text-orange-700">
-                      Use the Download Postcard Image button above to save your
+                      Use the Download Postcard Video button above to save your
                       postcard.
                     </p>
                   </div>
