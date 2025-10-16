@@ -4833,47 +4833,41 @@ export default function Create() {
               
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <div className="flex flex-col gap-2 w-full sm:w-auto">
-                  <Button
-                    type="button"
-                    className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
-                    onClick={downloadVideo}
-                    disabled={!result || !resultData || !selectedDish || !selectedBackground || isConvertingVideo}
-                  >
-                    {isConvertingVideo ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Converting to MP4...
-                      </>
-                    ) : (
-                      "Download Postcard Video"
-                    )}
-                  </Button>
-                  
-                  {/* Download Postcard Image Button */}
-                  <Button
-                    type="button"
-                    className="h-11 px-6 bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto"
-                    onClick={downloadPostcardImage}
-                    disabled={!result || !resultData || !selectedDish || !selectedBackground || imageDownloading}
-                  >
-                    {imageDownloading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating image...
-                      </>
-                    ) : (
-                      "Download Postcard Image"
-                    )}
-                  </Button>
-                  
-                  {(!result || !resultData || !selectedDish || !selectedBackground) && (
-                    <span className="text-xs text-gray-500 text-center sm:text-left">
-                      Generate a postcard first
-                    </span>
+                {/* Download Postcard Video Button */}
+                <Button
+                  type="button"
+                  className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto"
+                  onClick={downloadVideo}
+                  disabled={!result || !resultData || !selectedDish || !selectedBackground || isConvertingVideo}
+                >
+                  {isConvertingVideo ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Converting to MP4...
+                    </>
+                  ) : (
+                    "Download Postcard Video"
                   )}
-                </div>
+                </Button>
+                
+                {/* Download Postcard Image Button */}
+                <Button
+                  type="button"
+                  className="h-11 px-6 bg-green-600 text-white hover:bg-green-700 w-full sm:w-auto"
+                  onClick={downloadPostcardImage}
+                  disabled={!result || !resultData || !selectedDish || !selectedBackground || imageDownloading}
+                >
+                  {imageDownloading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating image...
+                    </>
+                  ) : (
+                    "Download Postcard Image"
+                  )}
+                </Button>
 
+                {/* Generate again Button */}
                 <Button
                   type="button"
                   className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
@@ -4890,6 +4884,14 @@ export default function Create() {
                   Generate again
                 </Button>
               </div>
+
+              {(!result || !resultData || !selectedDish || !selectedBackground) && (
+                <div className="text-center mt-2">
+                  <span className="text-xs text-gray-500">
+                    Generate a postcard first
+                  </span>
+                </div>
+              )}
 
               {videoGenerationError && (
                 <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
