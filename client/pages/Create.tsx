@@ -3376,20 +3376,22 @@ export default function Create() {
       // Draw greeting text
       const trimmedGreeting = greeting.trim();
       if (trimmedGreeting) {
-        const font = getGreetingFont();
+        // Use same font as video
+        const fontFamily = document.fonts.check('bold 28px "Nordique Pro"') 
+          ? 'Nordique Pro' 
+          : 'Arial, sans-serif';
         ctx.save();
-        ctx.font = font;
+        ctx.font = `bold 28px ${fontFamily}`;
         ctx.fillStyle = "#ffffff";
         ctx.strokeStyle = "#000000";
         ctx.lineWidth = 3;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Calculate text positioning
+        // Calculate text positioning (same as video)
         const textX = width / 2;
-        const textY = height * 0.15;
-        const maxWidth = width * 0.9;
-        const lineHeight = 40;
+        const maxWidth = width - 100; // Leave margin on sides (same as video)
+        const lineHeight = 35; // Line spacing (same as video)
         const scale = Math.min(width / 720, height / 1280);
 
         // Draw text with shadow
@@ -3418,11 +3420,12 @@ export default function Create() {
           lines.push(currentLine);
         }
 
-        // Draw each line
+        // Draw each line (positioned at bottom like video)
+        const startY = height - 50 - (lines.length - 1) * lineHeight / 2;
         lines.forEach((line, index) => {
-          const startY = textY + (index - (lines.length - 1) / 2) * lineHeight;
-          ctx.strokeText(line, textX, startY);
-          ctx.fillText(line, textX, startY);
+          const lineY = startY + index * lineHeight;
+          ctx.strokeText(line, textX, lineY);
+          ctx.fillText(line, textX, lineY);
         });
 
         ctx.restore();
