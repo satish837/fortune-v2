@@ -4,13 +4,36 @@ import crypto from "crypto";
 const DEFAULT_FOLDER = "diwali-postcards/videos";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   try {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
     const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
 
+    console.log('Cloudinary API called:', {
+      method: req.method,
+      hasCloudName: !!cloudName,
+      hasApiKey: !!apiKey,
+      hasApiSecret: !!apiSecret,
+      hasUploadPreset: !!uploadPreset
+    });
+
     if (!cloudName) {
+      console.error('Cloudinary cloud name not configured');
       return res.status(500).json({ error: 'Cloudinary cloud name not configured' });
     }
 
@@ -28,14 +51,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       // Generate signature
       if (!apiKey || !apiSecret) {
+        console.error('Cloudinary configuration missing:', {
+          hasApiKey: !!apiKey,
+          hasApiSecret: !!apiSecret
+        });
         return res.status(500).json({ error: "Cloudinary configuration missing" });
       }
 
       const rawBody = req.body;
+      console.log('Raw request body:', rawBody);
+      
       const parsedBody =
         typeof rawBody === "string" && rawBody.trim()
           ? JSON.parse(rawBody)
           : (rawBody ?? {});
+
+      console.log('Parsed request body:', parsedBody);
 
       const {
         folder = DEFAULT_FOLDER,
@@ -78,8 +109,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .join("&");
 
       const toSign = signatureBase ? `${signatureBase}${apiSecret}` : apiSecret;
+      
+      console.log('Signature generation:', {
+        params,
+        signatureBase,
+        toSign: toSign.substring(0, 50) + '...' // Don't log the full secret
+      });
 
       const signature = crypto.createHash("sha1").update(toSign).digest("hex");
+      
+      console.log('Generated signature:', signature);
 
       return res.status(200).json({
         cloudName,
