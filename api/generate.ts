@@ -162,61 +162,97 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
   const uploadedImageUrl = uploadResult.secure_url;
   console.log("Cloudinary: Image uploaded successfully:", uploadedImageUrl);
   
-  // Now apply background removal transformation via URL
+  // Try Cloudinary AI background removal with different approach
   const publicId = uploadResult.public_id;
-  const transformationUrl = `${CLOUDINARY_BASE_URL}/${cloudName}/image/upload/e_background_removal/${publicId}.png`;
   
-  console.log("Cloudinary: Applying background removal transformation...");
+  // Use Cloudinary's AI background removal with proper transformation
+  const transformationUrl = `https://res.cloudinary.com/${cloudName}/image/upload/e_background_removal/${publicId}.png`;
+  
+  console.log("Cloudinary: Applying AI background removal transformation...");
   console.log("Cloudinary: Transformation URL:", transformationUrl);
   
-  // Fetch the transformed image to ensure it's processed
-  console.log("Cloudinary: Fetching transformed image...");
-  const transformedResponse = await fetch(transformationUrl);
-  
-  if (!transformedResponse.ok) {
-    console.error("Cloudinary: Failed to fetch transformed image:", transformedResponse.status);
-    throw new Error(`Failed to fetch transformed image: ${transformedResponse.status}`);
+  // Try the transformation URL directly
+  try {
+    console.log("Cloudinary: Testing transformation URL...");
+    const testResponse = await fetch(transformationUrl);
+    
+    if (testResponse.ok) {
+      console.log("Cloudinary: Transformation URL works, using it directly");
+      return transformationUrl;
+    } else {
+      console.log("Cloudinary: Transformation URL failed, trying alternative approach");
+    }
+  } catch (error) {
+    console.log("Cloudinary: Transformation URL test failed:", error);
   }
   
-  const transformedBuffer = await transformedResponse.arrayBuffer();
-  console.log("Cloudinary: Transformed image fetched, size:", transformedBuffer.byteLength, "bytes");
-  
-  // Upload the transformed image as a new asset
-  const transformedTimestamp = Math.round(new Date().getTime() / 1000).toString();
-  const transformedMessage = `folder=diwali-postcards/background-removed&format=png&timestamp=${transformedTimestamp}${apiSecret}`;
-  
-  const transformedEncoder = new TextEncoder();
-  const transformedData = transformedEncoder.encode(transformedMessage);
-  const transformedHashBuffer = await crypto.subtle.digest('SHA-1', transformedData);
-  const transformedHashArray = Array.from(new Uint8Array(transformedHashBuffer));
-  const transformedSignature = transformedHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  
-  const transformedUploadUrl = `${CLOUDINARY_BASE_URL}/${cloudName}/image/upload`;
-  const transformedFormData = new FormData();
-  transformedFormData.append('file', new Blob([transformedBuffer]), 'background-removed.png');
-  transformedFormData.append('api_key', apiKey);
-  transformedFormData.append('timestamp', transformedTimestamp);
-  transformedFormData.append('signature', transformedSignature);
-  transformedFormData.append('folder', 'diwali-postcards/background-removed');
-  transformedFormData.append('format', 'png');
-  
-  console.log("Cloudinary: Uploading transformed image...");
-  const transformedUploadResponse = await fetch(transformedUploadUrl, {
-    method: 'POST',
-    body: transformedFormData,
-  });
-  
-  if (!transformedUploadResponse.ok) {
-    const error = await transformedUploadResponse.text();
-    console.error("Cloudinary: Transformed image upload error:", error);
-    throw new Error(`Failed to upload transformed image: ${transformedUploadResponse.status} - ${error}`);
+  // Alternative: Use Clipdrop for background removal if available
+  const clipdropApiKey = process.env.REMOVE_BG_API_KEY;
+  if (clipdropApiKey) {
+    try {
+      console.log("Cloudinary: Trying Clipdrop background removal as fallback...");
+      
+      // Download the original image
+      const originalResponse = await fetch(uploadedImageUrl);
+      if (!originalResponse.ok) {
+        throw new Error(`Failed to download original image: ${originalResponse.status}`);
+      }
+      const originalBuffer = await originalResponse.arrayBuffer();
+      
+      // Use Clipdrop for background removal
+      const clipdropFormData = new FormData();
+      clipdropFormData.append('image_file', new Blob([originalBuffer]), 'image.jpg');
+      
+      const clipdropResponse = await fetch('https://clipdrop-api.co/remove-background/v1', {
+        method: 'POST',
+        headers: {
+          'x-api-key': clipdropApiKey,
+        },
+        body: clipdropFormData,
+      });
+      
+      if (clipdropResponse.ok) {
+        const clipdropBuffer = await clipdropResponse.arrayBuffer();
+        console.log("Cloudinary: Clipdrop background removal successful");
+        
+        // Upload the Clipdrop result
+        const clipdropTimestamp = Math.round(new Date().getTime() / 1000).toString();
+        const clipdropMessage = `folder=diwali-postcards/background-removed&format=png&timestamp=${clipdropTimestamp}${apiSecret}`;
+        
+        const clipdropEncoder = new TextEncoder();
+        const clipdropData = clipdropEncoder.encode(clipdropMessage);
+        const clipdropHashBuffer = await crypto.subtle.digest('SHA-1', clipdropData);
+        const clipdropHashArray = Array.from(new Uint8Array(clipdropHashBuffer));
+        const clipdropSignature = clipdropHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        const clipdropUploadUrl = `${CLOUDINARY_BASE_URL}/${cloudName}/image/upload`;
+        const clipdropFormData = new FormData();
+        clipdropFormData.append('file', new Blob([clipdropBuffer]), 'background-removed.png');
+        clipdropFormData.append('api_key', apiKey);
+        clipdropFormData.append('timestamp', clipdropTimestamp);
+        clipdropFormData.append('signature', clipdropSignature);
+        clipdropFormData.append('folder', 'diwali-postcards/background-removed');
+        clipdropFormData.append('format', 'png');
+        
+        const clipdropUploadResponse = await fetch(clipdropUploadUrl, {
+          method: 'POST',
+          body: clipdropFormData,
+        });
+        
+        if (clipdropUploadResponse.ok) {
+          const clipdropResult = await clipdropUploadResponse.json();
+          console.log("Cloudinary: Clipdrop result uploaded successfully:", clipdropResult.secure_url);
+          return clipdropResult.secure_url;
+        }
+      }
+    } catch (clipdropError) {
+      console.error("Cloudinary: Clipdrop fallback failed:", clipdropError);
+    }
   }
   
-  const transformedResult = await transformedUploadResponse.json();
-  const finalUrl = transformedResult.secure_url;
-  
-  console.log("Cloudinary: Background removal successful, final URL:", finalUrl);
-  return finalUrl;
+  // If all else fails, return the original image
+  console.log("Cloudinary: Background removal failed, returning original image");
+  return uploadedImageUrl;
 }
 
 async function applyFluxKontextTransformation(imageUrl: string, apiKey: string): Promise<string> {
