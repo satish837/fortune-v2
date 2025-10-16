@@ -3960,11 +3960,11 @@ export default function Create() {
 
           // Draw frame image on top of everything - scaled up by 30%
           const frameScale = 1.3; // 30% increase
-          const frameWidth = width * frameScale;
-          const frameHeight = height * frameScale;
-          const frameX = (width - frameWidth) / 2;
-          const frameY = (height - frameHeight) / 2;
-          ctx.drawImage(frameImage, frameX, frameY, frameWidth, frameHeight);
+          const scaledFrameWidth = width * frameScale;
+          const scaledFrameHeight = height * frameScale;
+          const frameX = (width - scaledFrameWidth) / 2;
+          const frameY = (height - scaledFrameHeight) / 2;
+          ctx.drawImage(frameImage, frameX, frameY, scaledFrameWidth, scaledFrameHeight);
           
           // Debug: Log frame drawing
           if (elapsed % 1000 < 50) {
