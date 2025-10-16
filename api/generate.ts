@@ -117,7 +117,7 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
   console.log("Cloudinary: Starting background removal...");
   console.log("Cloudinary: Input image URL:", imageUrl);
   
-  // First, download the image
+  // First, upload the image to Cloudinary without transformation
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) {
     throw new Error(`Failed to download image: ${imageResponse.status}`);
@@ -126,8 +126,7 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
   
   // Generate signature for Cloudinary upload
   const timestamp = Math.round(new Date().getTime() / 1000).toString();
-  const transformation = 'e_background_removal';
-  const message = `folder=diwali-postcards/background-removed&format=png&timestamp=${timestamp}&transformation=${transformation}${apiSecret}`;
+  const message = `folder=diwali-postcards/background-removed&format=png&timestamp=${timestamp}${apiSecret}`;
   
   const encoder = new TextEncoder();
   const data = encoder.encode(message);
@@ -135,7 +134,7 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const signature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   
-  // Upload the image to Cloudinary
+  // Upload the image to Cloudinary first
   const uploadUrl = `${CLOUDINARY_BASE_URL}/${cloudName}/image/upload`;
   const formData = new FormData();
   formData.append('file', new Blob([imageBuffer]), 'image.png');
@@ -143,26 +142,36 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
   formData.append('timestamp', timestamp);
   formData.append('signature', signature);
   formData.append('folder', 'diwali-postcards/background-removed');
-  formData.append('transformation', transformation);
   formData.append('format', 'png');
   
-  console.log("Cloudinary: Uploading image with background removal...");
-  const response = await fetch(uploadUrl, {
+  console.log("Cloudinary: Uploading image...");
+  const uploadResponse = await fetch(uploadUrl, {
     method: 'POST',
     body: formData,
   });
   
-  console.log("Cloudinary: Upload response status:", response.status);
+  console.log("Cloudinary: Upload response status:", uploadResponse.status);
   
-  if (!response.ok) {
-    const error = await response.text();
-    console.error("Cloudinary: Error response:", error);
-    throw new Error(`Cloudinary background removal failed: ${response.status} - ${error}`);
+  if (!uploadResponse.ok) {
+    const error = await uploadResponse.text();
+    console.error("Cloudinary: Upload error response:", error);
+    throw new Error(`Cloudinary upload failed: ${uploadResponse.status} - ${error}`);
   }
   
-  const result = await response.json();
-  console.log("Cloudinary: Background removal successful, result URL:", result.secure_url);
-  return result.secure_url;
+  const uploadResult = await uploadResponse.json();
+  const uploadedImageUrl = uploadResult.secure_url;
+  console.log("Cloudinary: Image uploaded successfully:", uploadedImageUrl);
+  
+  // Now apply background removal transformation via URL
+  const publicId = uploadResult.public_id;
+  const transformationUrl = `${CLOUDINARY_BASE_URL}/${cloudName}/image/upload/e_background_removal/${publicId}.png`;
+  
+  console.log("Cloudinary: Applying background removal transformation...");
+  console.log("Cloudinary: Transformation URL:", transformationUrl);
+  
+  // The transformation is applied by accessing the URL
+  // Cloudinary will process the image and return the transformed version
+  return transformationUrl;
 }
 
 async function applyFluxKontextTransformation(imageUrl: string, apiKey: string): Promise<string> {
