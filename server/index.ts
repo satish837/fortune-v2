@@ -14,6 +14,7 @@ import { handleTinyPNGConfig } from "./routes/tinypng-config";
 import { handleOptimizeImage } from "./routes/optimize-image";
 import { handleCloudinaryConfig } from "./routes/cloudinary-config";
 import { handleCloudinarySignature } from "./routes/cloudinary-signature";
+import { handleCloudinary } from "./routes/cloudinary";
 import { handleUploadVideo } from "./routes/upload-video";
 import { handleGenerateVideo } from "./routes/generate-video";
 
@@ -38,6 +39,7 @@ export function createServer() {
   app.get("/api/demo", handleDemo);
   app.get("/api/cloudinary-config", handleCloudinaryConfig);
   app.post("/api/cloudinary-signature", handleCloudinarySignature);
+  app.all("/api/cloudinary", handleCloudinary);
   app.post("/api/generate", handleGenerate);
   app.get("/api/test-clipdrop", handleTestClipdrop);
   app.get("/api/test-flux-kontext", handleTestFluxKontext);
