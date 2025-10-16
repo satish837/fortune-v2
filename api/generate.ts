@@ -256,14 +256,15 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
 }
 
 async function applyFluxKontextTransformation(imageUrl: string, apiKey: string): Promise<string> {
-  const prompt = "Convert this person image to a polished digital illustration art style. Use a cartoonish character design with smooth lines, subtle gradients for shading, and a warm Indian Diwali color palette (yellows, oranges, browns). Transform the person's clothing to traditional Indian ethnic wear - for men: kurta with pajama or dhoti, for women: saree, lehenga, or salwar kameez. Add traditional Indian jewelry like bangles, earrings, and necklaces. Style the hair in traditional Indian fashion. Use vibrant Indian colors like deep reds, golds, maroons, and rich fabrics. DO NOT add any new background - keep the original background exactly as it is. DO NOT change, modify, or replace the background in any way. Preserve the original background completely unchanged. IMPORTANT: Do not modify or change the dish/food item in any way - keep it exactly as it appears in the original image with the same colors, shape, and details.";
+  const prompt = "Convert this person image to a polished digital illustration art style. Use a cartoonish character design with smooth lines, subtle gradients for shading, and a warm Indian Diwali color palette (yellows, oranges, browns). Transform the person's clothing to traditional Indian ethnic wear - for men: kurta with pajama or dhoti, for women: saree, lehenga, or salwar kameez. Add traditional Indian jewelry like bangles, earrings, and necklaces. Style the hair in traditional Indian fashion. Use vibrant Indian colors like deep reds, golds, maroons, and rich fabrics. CRITICAL: Preserve the EXACT number of people in the original image. DO NOT add any extra people, characters, or figures. DO NOT add any new background - keep the original background exactly as it is. DO NOT change, modify, or replace the background in any way. Preserve the original background completely unchanged. IMPORTANT: Do not modify or change the dish/food item in any way - keep it exactly as it appears in the original image with the same colors, shape, and details.";
   
   const payload = {
     prompt: prompt,
     image_url: imageUrl,
-    guidance_scale: 7.5,
-    num_inference_steps: 20,
+    guidance_scale: 8.0, // Increased for better prompt adherence
+    num_inference_steps: 25, // Increased for better quality
     seed: Math.floor(Math.random() * 1000000),
+    negative_prompt: "extra people, additional characters, random figures, unwanted persons, multiple people when only one person, crowd, group of people not in original", // Explicitly prevent adding people
   };
   
   const response = await fetch(FLUX_KONTEXT_URL, {
