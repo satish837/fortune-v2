@@ -44,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         uploadPreset: uploadPreset || 'ml_default',
         apiKey,
         hasApiKey: !!apiKey,
-        hasApiSecret: !!apiSecret
+        hasApiSecret: !!apiSecret,
+        status: 'ok'
       });
     }
 
@@ -58,14 +59,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: "Cloudinary configuration missing" });
       }
 
-      const rawBody = req.body;
-      console.log('Raw request body:', rawBody);
+      // Handle different body formats
+      let parsedBody = {};
       
-      const parsedBody =
-        typeof rawBody === "string" && rawBody.trim()
-          ? JSON.parse(rawBody)
-          : (rawBody ?? {});
-
+      if (req.body) {
+        if (typeof req.body === 'string') {
+          try {
+            parsedBody = JSON.parse(req.body);
+          } catch (e) {
+            console.error('Failed to parse JSON body:', e);
+            parsedBody = {};
+          }
+        } else if (typeof req.body === 'object') {
+          parsedBody = req.body;
+        }
+      }
+      
+      console.log('Raw request body:', req.body);
       console.log('Parsed request body:', parsedBody);
 
       const {
@@ -120,7 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log('Generated signature:', signature);
 
-      return res.status(200).json({
+      const response = {
         cloudName,
         apiKey,
         timestamp,
@@ -131,7 +141,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         eager: typeof eager === "string" ? eager.trim() : null,
         transformation:
           typeof transformation === "string" ? transformation.trim() : null,
-      });
+      };
+
+      console.log('Returning response:', response);
+
+      return res.status(200).json(response);
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

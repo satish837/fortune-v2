@@ -4287,7 +4287,13 @@ export default function Create() {
       });
 
       if (!signatureRes.ok) {
-        throw new Error("Failed to get Cloudinary signature");
+        const errorText = await signatureRes.text();
+        console.error('Cloudinary signature error:', {
+          status: signatureRes.status,
+          statusText: signatureRes.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to get Cloudinary signature: ${signatureRes.status} - ${errorText}`);
       }
       const signatureData = await signatureRes.json();
 
