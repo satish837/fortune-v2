@@ -169,9 +169,54 @@ async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: strin
   console.log("Cloudinary: Applying background removal transformation...");
   console.log("Cloudinary: Transformation URL:", transformationUrl);
   
-  // The transformation is applied by accessing the URL
-  // Cloudinary will process the image and return the transformed version
-  return transformationUrl;
+  // Fetch the transformed image to ensure it's processed
+  console.log("Cloudinary: Fetching transformed image...");
+  const transformedResponse = await fetch(transformationUrl);
+  
+  if (!transformedResponse.ok) {
+    console.error("Cloudinary: Failed to fetch transformed image:", transformedResponse.status);
+    throw new Error(`Failed to fetch transformed image: ${transformedResponse.status}`);
+  }
+  
+  const transformedBuffer = await transformedResponse.arrayBuffer();
+  console.log("Cloudinary: Transformed image fetched, size:", transformedBuffer.byteLength, "bytes");
+  
+  // Upload the transformed image as a new asset
+  const transformedTimestamp = Math.round(new Date().getTime() / 1000).toString();
+  const transformedMessage = `folder=diwali-postcards/background-removed&format=png&timestamp=${transformedTimestamp}${apiSecret}`;
+  
+  const transformedEncoder = new TextEncoder();
+  const transformedData = transformedEncoder.encode(transformedMessage);
+  const transformedHashBuffer = await crypto.subtle.digest('SHA-1', transformedData);
+  const transformedHashArray = Array.from(new Uint8Array(transformedHashBuffer));
+  const transformedSignature = transformedHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  const transformedUploadUrl = `${CLOUDINARY_BASE_URL}/${cloudName}/image/upload`;
+  const transformedFormData = new FormData();
+  transformedFormData.append('file', new Blob([transformedBuffer]), 'background-removed.png');
+  transformedFormData.append('api_key', apiKey);
+  transformedFormData.append('timestamp', transformedTimestamp);
+  transformedFormData.append('signature', transformedSignature);
+  transformedFormData.append('folder', 'diwali-postcards/background-removed');
+  transformedFormData.append('format', 'png');
+  
+  console.log("Cloudinary: Uploading transformed image...");
+  const transformedUploadResponse = await fetch(transformedUploadUrl, {
+    method: 'POST',
+    body: transformedFormData,
+  });
+  
+  if (!transformedUploadResponse.ok) {
+    const error = await transformedUploadResponse.text();
+    console.error("Cloudinary: Transformed image upload error:", error);
+    throw new Error(`Failed to upload transformed image: ${transformedUploadResponse.status} - ${error}`);
+  }
+  
+  const transformedResult = await transformedUploadResponse.json();
+  const finalUrl = transformedResult.secure_url;
+  
+  console.log("Cloudinary: Background removal successful, final URL:", finalUrl);
+  return finalUrl;
 }
 
 async function applyFluxKontextTransformation(imageUrl: string, apiKey: string): Promise<string> {
