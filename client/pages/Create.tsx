@@ -3951,8 +3951,8 @@ export default function Create() {
         }
 
         const personX = (width - personWidth) / 2;
-        // Position person image 44% from top (4% further down)
-        const personY = height * 0.44 + (height * 0.3 - personHeight) / 2;
+        // Position person image 39% from top (5% higher to prevent cropping)
+        const personY = height * 0.39 + (height * 0.3 - personHeight) / 2;
 
 
           // Draw person image first (behind frame)
