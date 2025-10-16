@@ -3339,6 +3339,9 @@ export default function Create() {
       const personImage = await loadHtmlImage(resultData.background_removed_image_url || resultData.image_url);
       const dishImage = await loadHtmlImage(selectedDish.image);
       const frameImage = await loadHtmlImage("/photo-frame-story.png");
+      
+      // Load background video frame (use static image)
+      const backgroundImage = await loadHtmlImage(`/background-static/${selectedBackground.id}.jpg`);
 
       // Calculate dimensions and positioning (same as video)
       const frameWidth = width;
@@ -3358,9 +3361,8 @@ export default function Create() {
       const dishX = (width - dishWidth) / 2;
       const dishY = height * 0.75;
 
-      // Draw background (solid color)
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fillRect(0, 0, width, height);
+      // Draw background image (video frame)
+      ctx.drawImage(backgroundImage, 0, 0, width, height);
 
       // Draw person image
       ctx.drawImage(personImage, personX, personY, personWidth, personHeight);
