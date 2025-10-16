@@ -3937,10 +3937,10 @@ export default function Create() {
           const frameWidth = width - (framePadding * 2);
           const frameHeight = height - (framePadding * 2);
 
-        // Person image dimensions
+        // Person image dimensions - increased by 30%
         const personAspectRatio = personImage.width / personImage.height;
-        const personMaxWidth = frameWidth * 0.6;
-        const personMaxHeight = frameHeight * 0.7;
+        const personMaxWidth = frameWidth * 0.6 * 1.3; // 30% increase
+        const personMaxHeight = frameHeight * 0.7 * 1.3; // 30% increase
         
         let personWidth = personMaxWidth;
         let personHeight = personMaxWidth / personAspectRatio;
@@ -3958,8 +3958,13 @@ export default function Create() {
           // Draw person image first (behind frame)
           ctx.drawImage(personImage, personX, personY, personWidth, personHeight);
 
-          // Draw frame image on top of everything
-          ctx.drawImage(frameImage, 0, 0, width, height);
+          // Draw frame image on top of everything - scaled up by 30%
+          const frameScale = 1.3; // 30% increase
+          const frameWidth = width * frameScale;
+          const frameHeight = height * frameScale;
+          const frameX = (width - frameWidth) / 2;
+          const frameY = (height - frameHeight) / 2;
+          ctx.drawImage(frameImage, frameX, frameY, frameWidth, frameHeight);
           
           // Debug: Log frame drawing
           if (elapsed % 1000 < 50) {
