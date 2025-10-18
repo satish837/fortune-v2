@@ -102,7 +102,6 @@ export default function Dashboard() {
       if (response.ok) {
         setUsers(data.users || []);
         setTotalUsers(data.totalUsers || 0);
-        calculateStats(data.users || []);
         setError("");
         setLastRefresh(new Date());
       } else {
@@ -115,6 +114,19 @@ export default function Dashboard() {
       if (!isAutoRefresh) {
         setLoading(false);
       }
+    }
+  };
+
+  const fetchAllUsersForStats = async () => {
+    try {
+      const response = await fetch(`https://diwalikafortune.fortunefoods.com/api/users?page=1&limit=10000`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        calculateStats(data.users || []);
+      }
+    } catch (err) {
+      console.error('Error fetching all users for stats:', err);
     }
   };
 
@@ -271,11 +283,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
       fetchUsers(false, currentPage);
+      fetchAllUsersForStats();
       fetchGeneratedCardsCount();
       
       // Set up real-time updates every 10 minutes
       const interval = setInterval(() => {
         fetchUsers(true, currentPage);
+        fetchAllUsersForStats();
         fetchGeneratedCardsCount(true);
       }, 600000); // 10 minutes (600,000 milliseconds)
       
@@ -382,6 +396,7 @@ export default function Dashboard() {
                 onClick={() => {
                   setCurrentPage(1);
                   fetchUsers(false, 1);
+                  fetchAllUsersForStats();
                   fetchGeneratedCardsCount();
                 }}
                 variant="outline"
