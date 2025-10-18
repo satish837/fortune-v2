@@ -64,7 +64,7 @@ export default function Dashboard() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [usersPerPage] = useState(10);
+  const [usersPerPage] = useState(100);
   const [totalUsers, setTotalUsers] = useState(0);
   const [paginationLoading, setPaginationLoading] = useState(false);
 
