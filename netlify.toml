@@ -1,15 +1,17 @@
 [build]
-  command = "npm run build:client"
-  functions = "netlify/functions"
-  publish = "dist/spa"
+  command = "pnpm build"
+  publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "18"
 
-[functions]
-  external_node_modules = ["express"]
-  node_bundler = "esbuild"
-  
 [[redirects]]
-  force = true
   from = "/api/*"
+  to = "https://diwalikafortune.fortunefoods.com/api/:splat"
   status = 200
-  to = "/.netlify/functions/api/:splat"
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -67,7 +67,7 @@ export default function Dashboard() {
       if (!isAutoRefresh) {
         setLoading(true);
       }
-      const response = await fetch('/api/users');
+      const response = await fetch('https://diwalikafortune.fortunefoods.com/api/users');
       const data = await response.json();
       
       if (response.ok) {
@@ -94,8 +94,8 @@ export default function Dashboard() {
         setIsRefreshing(true);
       }
       
-      // Use Cloudinary API only
-      const cloudinaryResponse = await fetch('/api/cloudinary-live');
+      // Use Cloudinary API only (from Vercel)
+      const cloudinaryResponse = await fetch('https://diwalikafortune.fortunefoods.com/api/cloudinary-live');
       const cloudinaryData = await cloudinaryResponse.json();
       
       if (cloudinaryResponse.ok && cloudinaryData.success) {
