@@ -95,7 +95,7 @@ export default function Dashboard() {
       }
       
       // Use Cloudinary API only (from Vercel)
-      const cloudinaryResponse = await fetch('https://diwalikafortune.fortunefoods.com/api/cloudinary-live');
+      const cloudinaryResponse = await fetch('https://diwalikafortune.fortunefoods.com/api/cloudinary-simple');
       const cloudinaryData = await cloudinaryResponse.json();
       
       if (cloudinaryResponse.ok && cloudinaryData.success) {
