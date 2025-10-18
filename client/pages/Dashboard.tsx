@@ -95,7 +95,7 @@ export default function Dashboard() {
       }
       
       // Use Cloudinary API only
-      const cloudinaryResponse = await fetch('/api/cloudinary-count?prefix=diwali-postcards/background-removed/');
+      const cloudinaryResponse = await fetch('/api/cloudinary-simple');
       const cloudinaryData = await cloudinaryResponse.json();
       
       if (cloudinaryResponse.ok && cloudinaryData.success) {
