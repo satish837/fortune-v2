@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Create from "./pages/Create";
 import VerifyOTP from "./pages/VerifyOTP";
 import Dashboard from "./pages/Dashboard";
+import TestAPI from "./pages/TestAPI";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/create" element={<Create />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/test-api" element={<TestAPI />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
