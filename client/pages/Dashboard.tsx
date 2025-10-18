@@ -94,48 +94,53 @@ export default function Dashboard() {
         setIsRefreshing(true);
       }
       
-      // Try real Cloudinary API first, fallback to MongoDB
-      const cloudinaryResponse = await fetch('/api/cloudinary-count?prefix=diwali-postcards/background-removed/');
-      const cloudinaryData = await cloudinaryResponse.json();
+      // Try Cloudinary API first (for local development), fallback to MongoDB
+      try {
+        const cloudinaryResponse = await fetch('/api/cloudinary-count?prefix=diwali-postcards/background-removed/');
+        const cloudinaryData = await cloudinaryResponse.json();
+        
+        if (cloudinaryResponse.ok && cloudinaryData.success) {
+          setStats(prevStats => {
+            const newStats = {
+              ...prevStats,
+              totalCards: cloudinaryData.data.totalCards,
+              cardsToday: cloudinaryData.data.cardsToday,
+              cardsLast7Days: cloudinaryData.data.cardsLast7Days,
+              cardsLast30Days: cloudinaryData.data.cardsLast30Days
+            };
+            return newStats;
+          });
+          return; // Success, exit early
+        }
+      } catch (cloudinaryError) {
+        console.log('Cloudinary API not available, using MongoDB fallback');
+      }
       
-      if (cloudinaryResponse.ok && cloudinaryData.success) {
+      // Fallback to MongoDB (works on Vercel)
+      const response = await fetch('/api/generated-cards-count');
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         setStats(prevStats => {
           const newStats = {
             ...prevStats,
-            totalCards: cloudinaryData.data.totalCards,
-            cardsToday: cloudinaryData.data.cardsToday,
-            cardsLast7Days: cloudinaryData.data.cardsLast7Days,
-            cardsLast30Days: cloudinaryData.data.cardsLast30Days
+            totalCards: data.data.totalCards,
+            cardsToday: data.data.cardsToday,
+            cardsLast7Days: data.data.cardsLast7Days,
+            cardsLast30Days: data.data.cardsLast30Days
           };
           return newStats;
         });
       } else {
-        // Fallback to MongoDB
-        const response = await fetch('/api/generated-cards-count');
-        const data = await response.json();
-        
-        if (response.ok && data.success) {
-          setStats(prevStats => {
-            const newStats = {
-              ...prevStats,
-              totalCards: data.data.totalCards,
-              cardsToday: data.data.cardsToday,
-              cardsLast7Days: data.data.cardsLast7Days,
-              cardsLast30Days: data.data.cardsLast30Days
-            };
-            return newStats;
-          });
-        } else {
-          console.error('❌ Failed to fetch generated cards count from both sources:', data.error);
-          // Set some default values to show the UI is working
-          setStats(prevStats => ({
-            ...prevStats,
-            totalCards: 0,
-            cardsToday: 0,
-            cardsLast7Days: 0,
-            cardsLast30Days: 0
-          }));
-        }
+        console.error('❌ Failed to fetch generated cards count:', data.error);
+        // Set some default values to show the UI is working
+        setStats(prevStats => ({
+          ...prevStats,
+          totalCards: 0,
+          cardsToday: 0,
+          cardsLast7Days: 0,
+          cardsLast30Days: 0
+        }));
       }
     } catch (err) {
       console.error('❌ Error fetching generated cards count:', err);
@@ -450,7 +455,7 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="flex justify-between items-center">
               <p className="text-blue-600 text-sm">
-                <strong>Live Data:</strong> Auto-refresh from Cloudinary every 10 minutes
+                <strong>Live Data:</strong> Auto-refresh from database every 10 minutes
               </p>
               <div className="flex items-center gap-2">
                 {isRefreshing && (
