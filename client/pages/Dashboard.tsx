@@ -61,17 +61,47 @@ export default function Dashboard() {
     password: ""
   });
   const [loginError, setLoginError] = useState("");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
 
-  const fetchUsers = async (isAutoRefresh = false) => {
+  // Pagination functions
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchUsers(false, page);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    const totalPages = Math.ceil(totalUsers / usersPerPage);
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1);
+    }
+  };
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(totalUsers / usersPerPage);
+  const startIndex = (currentPage - 1) * usersPerPage + 1;
+  const endIndex = Math.min(currentPage * usersPerPage, totalUsers);
+
+  const fetchUsers = async (isAutoRefresh = false, page = 1) => {
     try {
       if (!isAutoRefresh) {
         setLoading(true);
       }
-      const response = await fetch('https://diwalikafortune.fortunefoods.com/api/users');
+      const response = await fetch(`https://diwalikafortune.fortunefoods.com/api/users?page=${page}&limit=${usersPerPage}`);
       const data = await response.json();
       
       if (response.ok) {
         setUsers(data.users || []);
+        setTotalUsers(data.totalUsers || 0);
         calculateStats(data.users || []);
         setError("");
         setLastRefresh(new Date());
@@ -240,19 +270,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      fetchUsers();
+      fetchUsers(false, currentPage);
       fetchGeneratedCardsCount();
       
       // Set up real-time updates every 10 minutes
       const interval = setInterval(() => {
-        fetchUsers(true);
+        fetchUsers(true, currentPage);
         fetchGeneratedCardsCount(true);
       }, 600000); // 10 minutes (600,000 milliseconds)
       
       // Cleanup interval on unmount
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, currentPage]);
 
   // Show loading while checking authentication
   if (authLoading) {
@@ -350,7 +380,8 @@ export default function Dashboard() {
             <div className="flex gap-3">
               <Button
                 onClick={() => {
-                  fetchUsers();
+                  setCurrentPage(1);
+                  fetchUsers(false, 1);
                   fetchGeneratedCardsCount();
                 }}
                 variant="outline"
@@ -586,6 +617,68 @@ export default function Dashboard() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalUsers > 0 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-orange-100">
+                <div className="text-sm text-orange-600">
+                  Showing {startIndex} to {endIndex} of {totalUsers} users
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                  >
+                    Previous
+                  </Button>
+                  
+                  {/* Page numbers */}
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className={
+                            currentPage === pageNum
+                              ? "bg-orange-600 hover:bg-orange-700 text-white"
+                              : "text-orange-600 border-orange-300 hover:bg-orange-50"
+                          }
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>

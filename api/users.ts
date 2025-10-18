@@ -23,12 +23,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/diwali-postcard');
     }
 
-    // Fetch all users from MongoDB
-    const users = await User.find({}).sort({ createdAt: -1 }).exec();
+    // Get pagination parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const totalUsers = await User.countDocuments({});
+
+    // Fetch paginated users from MongoDB
+    const users = await User.find({})
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
 
     res.status(200).json({
       success: true,
-      count: users.length,
+      totalUsers,
+      currentPage: page,
+      totalPages: Math.ceil(totalUsers / limit),
+      usersPerPage: limit,
       users: users.map(user => ({
         id: user._id,
         name: user.name,

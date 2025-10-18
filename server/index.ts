@@ -76,18 +76,34 @@ export function createServer() {
   app.get("/api/cloudinary-count", handleCloudinaryCount);
   app.get("/api/cloudinary-simple-count", handleCloudinarySimpleCount);
 
-  // Get all users (for testing purposes)
+  // Get all users with pagination
   app.get("/api/users", async (req, res) => {
     try {
       const connectDB = (await import("./database/connection")).default;
       const User = (await import("./models/User")).default;
 
       await connectDB();
-      const users = await User.find({}).sort({ createdAt: -1 });
+
+      // Get pagination parameters
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+
+      // Get total count
+      const totalUsers = await User.countDocuments({});
+
+      // Fetch paginated users
+      const users = await User.find({})
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
 
       res.json({
         success: true,
-        count: users.length,
+        totalUsers,
+        currentPage: page,
+        totalPages: Math.ceil(totalUsers / limit),
+        usersPerPage: limit,
         users: users.map((user) => ({
           id: user._id,
           name: user.name,
