@@ -95,7 +95,7 @@ export default function Dashboard() {
       }
       
       // Use Cloudinary API only
-      const cloudinaryResponse = await fetch('/api/cloudinary-simple');
+      const cloudinaryResponse = await fetch('/api/cloudinary-live');
       const cloudinaryData = await cloudinaryResponse.json();
       
       if (cloudinaryResponse.ok && cloudinaryData.success) {

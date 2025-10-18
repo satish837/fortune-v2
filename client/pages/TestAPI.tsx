@@ -9,7 +9,7 @@ export default function TestAPI() {
     const fetchData = async () => {
       try {
         console.log('🔄 Testing API call...');
-        const response = await fetch('/api/cloudinary-simple');
+        const response = await fetch('/api/cloudinary-live');
         const result = await response.json();
         
         console.log('📡 API Response:', result);

@@ -1,0 +1,157 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    console.log('🔄 Cloudinary Live API called on Vercel');
+    
+    // Check if Cloudinary credentials are available
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      console.log('❌ Cloudinary credentials not configured');
+      res.status(500).json({
+        success: false,
+        error: 'Cloudinary credentials not configured',
+        details: 'Missing CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET'
+      });
+      return;
+    }
+
+    // Use dynamic import for Cloudinary
+    const { v2: cloudinary } = await import('cloudinary');
+    
+    // Configure Cloudinary
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+
+    const { 
+      prefix = 'diwali-postcards/background-removed/',
+      resource_type = 'image',
+      type = 'upload'
+    } = req.query;
+
+    console.log('📁 Fetching live count for folder:', prefix);
+
+    // Calculate date ranges
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Get total count first
+    const result = await cloudinary.api.resources({
+      type: type as string,
+      resource_type: resource_type as string,
+      prefix: prefix as string,
+      max_results: 1,
+    });
+
+    // Fetch all resources for date filtering
+    let allResources: any[] = [];
+    let nextCursor = null;
+    let totalFetched = 0;
+    const maxResources = 6000;
+
+    do {
+      const batchResult = await cloudinary.api.resources({
+        type: type as string,
+        resource_type: resource_type as string,
+        prefix: prefix as string,
+        max_results: 500,
+        next_cursor: nextCursor
+      });
+
+      allResources = allResources.concat(batchResult.resources);
+      nextCursor = batchResult.next_cursor;
+      totalFetched += batchResult.resources.length;
+
+      if (totalFetched >= maxResources || !nextCursor) {
+        break;
+      }
+    } while (nextCursor);
+
+    const totalCount = result.total_count || allResources.length;
+    
+    // Filter by creation date
+    const cardsToday = allResources.filter((resource: any) => {
+      const createdDate = new Date(resource.created_at);
+      return createdDate >= today;
+    }).length;
+
+    const cardsLast7Days = allResources.filter((resource: any) => {
+      const createdDate = new Date(resource.created_at);
+      return createdDate >= last7Days;
+    }).length;
+
+    const cardsLast30Days = allResources.filter((resource: any) => {
+      const createdDate = new Date(resource.created_at);
+      return createdDate >= last30Days;
+    }).length;
+
+    const responseData = {
+      success: true,
+      data: {
+        totalCards: totalCount,
+        cardsToday: cardsToday,
+        cardsLast7Days: cardsLast7Days,
+        cardsLast30Days: cardsLast30Days,
+        source: 'cloudinary_live',
+        folder: prefix,
+        cloudName: cloudName,
+        apiInfo: {
+          totalCount: result.total_count,
+          resourcesFetched: allResources.length,
+          hasMore: !!nextCursor,
+          totalFetched: totalFetched
+        }
+      },
+      metadata: {
+        message: 'Live data from Cloudinary API',
+        lastUpdated: new Date().toISOString(),
+        folder: prefix as string
+      }
+    };
+
+    console.log('✅ Live Cloudinary data fetched:', {
+      total: totalCount,
+      today: cardsToday,
+      last7Days: cardsLast7Days,
+      last30Days: cardsLast30Days
+    });
+
+    res.status(200).json(responseData);
+
+  } catch (error) {
+    console.error('❌ Error fetching live Cloudinary data:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch live Cloudinary data',
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
