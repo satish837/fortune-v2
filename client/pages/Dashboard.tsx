@@ -66,11 +66,12 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [paginationLoading, setPaginationLoading] = useState(false);
 
   // Pagination functions
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    fetchUsers(false, page);
+    // fetchUsers will be called by useEffect when currentPage changes
   };
 
   const handlePreviousPage = () => {
@@ -91,11 +92,15 @@ export default function Dashboard() {
   const startIndex = (currentPage - 1) * usersPerPage + 1;
   const endIndex = Math.min(currentPage * usersPerPage, totalUsers);
 
-  const fetchUsers = async (isAutoRefresh = false, page = 1) => {
+  const fetchUsers = async (isAutoRefresh = false, page = 1, isPagination = false) => {
     try {
-      if (!isAutoRefresh) {
+      if (!isAutoRefresh && !isPagination) {
         setLoading(true);
       }
+      if (isPagination) {
+        setPaginationLoading(true);
+      }
+      
       const response = await fetch(`https://diwalikafortune.fortunefoods.com/api/users?page=${page}&limit=${usersPerPage}`);
       const data = await response.json();
       
@@ -111,8 +116,11 @@ export default function Dashboard() {
       setError('Network error. Please try again.');
       console.error('Error fetching users:', err);
     } finally {
-      if (!isAutoRefresh) {
+      if (!isAutoRefresh && !isPagination) {
         setLoading(false);
+      }
+      if (isPagination) {
+        setPaginationLoading(false);
       }
     }
   };
@@ -296,7 +304,14 @@ export default function Dashboard() {
       // Cleanup interval on unmount
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, authLoading, currentPage]);
+  }, [isAuthenticated, authLoading]);
+
+  // Separate useEffect for page changes - only fetches users, not stats
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      fetchUsers(false, currentPage, true);
+    }
+  }, [currentPage]);
 
   // Show loading while checking authentication
   if (authLoading) {
@@ -591,8 +606,17 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="relative">
+                {paginationLoading && (
+                  <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                      <span className="text-orange-600 text-sm">Loading page...</span>
+                    </div>
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  <Table>
                   <TableHeader>
                     <TableRow className="border-orange-200">
                       <TableHead className="text-orange-700">Name</TableHead>
@@ -632,6 +656,7 @@ export default function Dashboard() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             )}
 
