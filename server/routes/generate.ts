@@ -2,6 +2,8 @@ import type { RequestHandler } from "express";
 import path from "path";
 import { promises as fs } from "fs";
 import crypto from "crypto";
+import connectDB from "../database/connection";
+import GeneratedCard from "../models/GeneratedCard";
 
 /**
  * Image Generation Pipeline:
@@ -650,6 +652,30 @@ export const handleGenerate: RequestHandler = async (req, res) => {
       );
       finalImageUrl = fluxKontextImageUrl;
       backgroundRemoved = false;
+    }
+
+    // Save generated card to database
+    try {
+      await connectDB();
+      
+      // Extract dish name from the dish image URL or use a default
+      const dishName = dishImageUrl ? 
+        dishImageUrl.split('/').pop()?.replace(/\.(png|jpg|jpeg)$/i, '') || 'Unknown Dish' : 
+        'Unknown Dish';
+
+      // Create new generated card record
+      const generatedCard = new GeneratedCard({
+        imageUrl: finalImageUrl,
+        dishName: dishName,
+        background: background || 'default',
+        greeting: greeting || ''
+      });
+
+      await generatedCard.save();
+      console.log('Generated card saved to database:', generatedCard._id);
+    } catch (dbError) {
+      console.error('Error saving generated card to database:', dbError);
+      // Don't fail the generation if database save fails
     }
 
     res.json({

@@ -17,6 +17,17 @@ import { handleCloudinarySignature } from "./routes/cloudinary-signature";
 import { handleCloudinary } from "./routes/cloudinary";
 import { handleUploadVideo } from "./routes/upload-video";
 import { handleGenerateVideo } from "./routes/generate-video";
+import { handleGeneratedCardsCount } from "./routes/generated-cards-count";
+import { handleCloudinaryAssets } from "./routes/cloudinary-assets";
+import { handleCloudinarySearch } from "./routes/cloudinary-search";
+import { handleDebugStats } from "./routes/debug-stats";
+import { handleTestData } from "./routes/test-data";
+import { handleCloudinarySimple } from "./routes/cloudinary-simple";
+import { handleRealCloudinaryData } from "./routes/real-cloudinary-data";
+import { handleCloudinaryStats } from "./routes/cloudinary-stats";
+import { handleUpdateDistribution, handleGetDistribution } from "./routes/update-distribution";
+import { handleCloudinaryCount } from "./routes/cloudinary-count";
+import { handleCloudinarySimpleCount } from "./routes/cloudinary-simple-count";
 
 const CLOUDINARY_BASE_URL = "https://api.cloudinary.com/v1_1";
 
@@ -50,6 +61,20 @@ export function createServer() {
   app.post("/api/optimize-image", handleOptimizeImage);
   app.post("/api/upload-video", handleUploadVideo);
   app.post("/api/generate-video", handleGenerateVideo);
+  
+  // New API endpoints for generated cards tracking
+  app.get("/api/generated-cards-count", handleGeneratedCardsCount);
+  app.get("/api/cloudinary-assets", handleCloudinaryAssets);
+  app.get("/api/cloudinary-search", handleCloudinarySearch);
+  app.get("/api/debug-stats", handleDebugStats);
+  app.post("/api/test-data", handleTestData);
+  app.get("/api/cloudinary-simple", handleCloudinarySimple);
+  app.get("/api/real-cloudinary-data", handleRealCloudinaryData);
+  app.get("/api/cloudinary-stats", handleCloudinaryStats);
+  app.get("/api/distribution", handleGetDistribution);
+  app.post("/api/update-distribution", handleUpdateDistribution);
+  app.get("/api/cloudinary-count", handleCloudinaryCount);
+  app.get("/api/cloudinary-simple-count", handleCloudinarySimpleCount);
 
   // Get all users (for testing purposes)
   app.get("/api/users", async (req, res) => {

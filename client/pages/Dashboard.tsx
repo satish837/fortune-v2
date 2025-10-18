@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Users, Mail, Phone, Calendar, RefreshCw, Download, LogOut, Lock } from "lucide-react";
+import { Search, Users, Mail, Phone, Calendar, RefreshCw, Download, LogOut, Lock, Image, Sparkles } from "lucide-react";
 
 interface User {
   id: string;
@@ -23,6 +23,10 @@ interface DashboardStats {
   verifiedUsers: number;
   recentUsers: number;
   totalToday: number;
+  totalCards: number;
+  cardsToday: number;
+  cardsLast7Days: number;
+  cardsLast30Days: number;
 }
 
 // Static credentials for dashboard access
@@ -38,22 +42,31 @@ export default function Dashboard() {
     totalUsers: 0,
     verifiedUsers: 0,
     recentUsers: 0,
-    totalToday: 0
+    totalToday: 0,
+    totalCards: 0,
+    cardsToday: 0,
+    cardsLast7Days: 0,
+    cardsLast30Days: 0
   });
+
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [loginForm, setLoginForm] = useState({
     username: "",
     password: ""
   });
   const [loginError, setLoginError] = useState("");
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (isAutoRefresh = false) => {
     try {
-      setLoading(true);
+      if (!isAutoRefresh) {
+        setLoading(true);
+      }
       const response = await fetch('/api/users');
       const data = await response.json();
       
@@ -61,6 +74,7 @@ export default function Dashboard() {
         setUsers(data.users || []);
         calculateStats(data.users || []);
         setError("");
+        setLastRefresh(new Date());
       } else {
         setError(data.error || 'Failed to fetch users');
       }
@@ -68,7 +82,75 @@ export default function Dashboard() {
       setError('Network error. Please try again.');
       console.error('Error fetching users:', err);
     } finally {
-      setLoading(false);
+      if (!isAutoRefresh) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const fetchGeneratedCardsCount = async (isAutoRefresh = false) => {
+    try {
+      if (isAutoRefresh) {
+        setIsRefreshing(true);
+      }
+      
+      // Try real Cloudinary API first, fallback to MongoDB
+      const cloudinaryResponse = await fetch('/api/cloudinary-count?prefix=diwali-postcards/background-removed/');
+      const cloudinaryData = await cloudinaryResponse.json();
+      
+      if (cloudinaryResponse.ok && cloudinaryData.success) {
+        setStats(prevStats => {
+          const newStats = {
+            ...prevStats,
+            totalCards: cloudinaryData.data.totalCards,
+            cardsToday: cloudinaryData.data.cardsToday,
+            cardsLast7Days: cloudinaryData.data.cardsLast7Days,
+            cardsLast30Days: cloudinaryData.data.cardsLast30Days
+          };
+          return newStats;
+        });
+      } else {
+        // Fallback to MongoDB
+        const response = await fetch('/api/generated-cards-count');
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          setStats(prevStats => {
+            const newStats = {
+              ...prevStats,
+              totalCards: data.data.totalCards,
+              cardsToday: data.data.cardsToday,
+              cardsLast7Days: data.data.cardsLast7Days,
+              cardsLast30Days: data.data.cardsLast30Days
+            };
+            return newStats;
+          });
+        } else {
+          console.error('❌ Failed to fetch generated cards count from both sources:', data.error);
+          // Set some default values to show the UI is working
+          setStats(prevStats => ({
+            ...prevStats,
+            totalCards: 0,
+            cardsToday: 0,
+            cardsLast7Days: 0,
+            cardsLast30Days: 0
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error fetching generated cards count:', err);
+      // Set some default values to show the UI is working
+      setStats(prevStats => ({
+        ...prevStats,
+        totalCards: 0,
+        cardsToday: 0,
+        cardsLast7Days: 0,
+        cardsLast30Days: 0
+      }));
+    } finally {
+      if (isAutoRefresh) {
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -176,6 +258,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
       fetchUsers();
+      fetchGeneratedCardsCount();
+      
+      // Set up real-time updates every 10 minutes
+      const interval = setInterval(() => {
+        fetchUsers(true);
+        fetchGeneratedCardsCount(true);
+      }, 600000); // 10 minutes (600,000 milliseconds)
+      
+      // Cleanup interval on unmount
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated, authLoading]);
 
@@ -274,12 +366,16 @@ export default function Dashboard() {
             </div>
             <div className="flex gap-3">
               <Button
-                onClick={fetchUsers}
+                onClick={() => {
+                  fetchUsers();
+                  fetchGeneratedCardsCount();
+                }}
                 variant="outline"
                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                disabled={isRefreshing}
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
               <Button
                 onClick={exportUsers}
@@ -345,6 +441,77 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-orange-900">{stats.totalToday}</div>
               <p className="text-xs text-orange-600">New registrations</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Status Info */}
+        <Card className="bg-blue-50 border-blue-200 mb-6">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <p className="text-blue-600 text-sm">
+                <strong>Live Data:</strong> Auto-refresh from Cloudinary every 10 minutes
+              </p>
+              <div className="flex items-center gap-2">
+                {isRefreshing && (
+                  <div className="flex items-center gap-1 text-blue-600 text-sm">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Refreshing...
+                  </div>
+                )}
+                {lastRefresh && (
+                  <p className="text-blue-500 text-xs">
+                    Last updated: {lastRefresh.toLocaleTimeString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Generated Cards Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur border-orange-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-700">Total Cards</CardTitle>
+              <Image className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">{stats.totalCards}</div>
+              <p className="text-xs text-orange-600">All generated cards</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur border-orange-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-700">Cards Today</CardTitle>
+              <Sparkles className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">{stats.cardsToday}</div>
+              <p className="text-xs text-orange-600">Generated today</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur border-orange-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-700">Last 7 Days</CardTitle>
+              <Calendar className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">{stats.cardsLast7Days}</div>
+              <p className="text-xs text-orange-600">Recent cards</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 backdrop-blur border-orange-200">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-orange-700">Last 30 Days</CardTitle>
+              <Image className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-900">{stats.cardsLast30Days}</div>
+              <p className="text-xs text-orange-600">This month</p>
             </CardContent>
           </Card>
         </div>

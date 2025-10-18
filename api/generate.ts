@@ -1,4 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import mongoose from 'mongoose';
+
+// Import the GeneratedCard model
+const GeneratedCardSchema = new mongoose.Schema({
+  userId: { type: String, required: false, trim: true },
+  userEmail: { type: String, required: false, trim: true, lowercase: true },
+  imageUrl: { type: String, required: true, trim: true },
+  dishName: { type: String, required: false, trim: true },
+  background: { type: String, required: false, trim: true },
+  greeting: { type: String, required: false, trim: true, maxlength: [500, 'Greeting cannot exceed 500 characters'] }
+}, { timestamps: true });
+
+const GeneratedCard = mongoose.models.GeneratedCard || mongoose.model('GeneratedCard', GeneratedCardSchema);
 
 // Constants
 const FAL_FILES = "https://fal.run/v1/files";
@@ -529,6 +542,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.warn("Cloudinary credentials not set, skipping background removal");
       finalImageUrl = fluxKontextImageUrl;
       backgroundRemoved = false;
+    }
+
+    // Save generated card to database
+    try {
+      // Connect to MongoDB if not already connected
+      if (mongoose.connection.readyState !== 1) {
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/diwali-postcard');
+      }
+
+      // Extract data from request body
+      const { personImageUrl, dishImageUrl, background, greeting } = req.body;
+      
+      // Extract dish name from the dish image URL or use a default
+      const dishName = dishImageUrl ? 
+        dishImageUrl.split('/').pop()?.replace(/\.(png|jpg|jpeg)$/i, '') || 'Unknown Dish' : 
+        'Unknown Dish';
+
+      // Create new generated card record
+      const generatedCard = new GeneratedCard({
+        imageUrl: finalImageUrl,
+        dishName: dishName,
+        background: background || 'default',
+        greeting: greeting || ''
+      });
+
+      await generatedCard.save();
+      console.log('Generated card saved to database:', generatedCard._id);
+    } catch (dbError) {
+      console.error('Error saving generated card to database:', dbError);
+      // Don't fail the generation if database save fails
     }
 
     res.json({ 
