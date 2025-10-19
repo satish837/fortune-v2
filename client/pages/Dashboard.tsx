@@ -144,8 +144,13 @@ export default function Dashboard() {
         setIsRefreshing(true);
       }
       
-      // Use Cloudinary API only (from Vercel)
-      const cloudinaryResponse = await fetch('https://diwalikafortune.fortunefoods.com/api/cloudinary-simple');
+      // Use local API when running on localhost, otherwise use production API
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const apiUrl = isLocalhost 
+        ? 'http://localhost:5205/api/cloudinary-simple?prefix=diwali-postcards/background-removed/'
+        : 'https://diwalikafortune.fortunefoods.com/api/cloudinary-simple?prefix=diwali-postcards/background-removed/';
+      
+      const cloudinaryResponse = await fetch(apiUrl);
       const cloudinaryData = await cloudinaryResponse.json();
       
       if (cloudinaryResponse.ok && cloudinaryData.success) {

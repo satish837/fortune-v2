@@ -35,12 +35,12 @@ export const handleCloudinaryCount: RequestHandler = async (req, res) => {
       max_results: 1, // We only need the count, not the actual resources
     });
 
-    // Get all resources to filter by date (fetch more to get accurate date filtering)
+    // Get all resources to filter by date (fetch all available resources)
     // Note: Cloudinary API has pagination limits, so we'll fetch in batches
     let allResources: any[] = [];
     let nextCursor = null;
     let totalFetched = 0;
-    const maxResources = 6000; // Increased limit to get closer to actual count (5,596)
+    const maxResources = 50000; // Increased limit to handle large collections
 
     do {
       const batchResult = await cloudinary.api.resources({

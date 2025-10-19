@@ -71,11 +71,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       max_results: 1, // We only need the count
     });
 
-    // Get all resources to filter by date (fetch more to get accurate date filtering)
+    // Get all resources to filter by date (fetch all available resources)
     let allResources: any[] = [];
     let nextCursor = null;
     let totalFetched = 0;
-    const maxResources = 6000; // Increased limit to get closer to actual count
+    const maxResources = 50000; // Increased limit to handle large collections
 
     do {
       const batchResult = await cloudinary.api.resources({
