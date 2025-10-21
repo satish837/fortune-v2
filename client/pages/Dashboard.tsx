@@ -229,26 +229,94 @@ export default function Dashboard() {
     });
   };
 
-  const exportUsers = () => {
-    const csvContent = [
-      ['Name', 'Email', 'Phone', 'Handle', 'Verified', 'Created At'],
-      ...filteredUsers.map(user => [
-        user.name,
-        user.email,
-        user.phone,
-        user.handle || '',
-        user.isVerified ? 'Yes' : 'No',
-        formatDate(user.createdAt)
-      ])
-    ].map(row => row.join(',')).join('\n');
+  const exportUsers = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all users in batches to handle large datasets (15k+ entries)
+      let allUsers = [];
+      let page = 1;
+      let hasMore = true;
+      const batchSize = 1000; // Process 1000 users at a time
+      
+      console.log('Starting CSV export for large dataset...');
+      
+      while (hasMore) {
+        const response = await fetch(`/api/users?page=${page}&limit=${batchSize}`);
+        const data = await response.json();
+        
+        if (data.success && data.users && data.users.length > 0) {
+          allUsers = [...allUsers, ...data.users];
+          console.log(`Fetched batch ${page}: ${data.users.length} users (Total: ${allUsers.length})`);
+          
+          // Check if there are more pages
+          hasMore = data.currentPage < data.totalPages;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log(`Export complete: ${allUsers.length} total users fetched`);
+      
+      // Apply search filter if there's a search term
+      const usersToExport = searchTerm 
+        ? allUsers.filter(user =>
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (user.handle && user.handle.toLowerCase().includes(searchTerm.toLowerCase()))
+          )
+        : allUsers;
+      
+      console.log(`Exporting ${usersToExport.length} users to CSV...`);
+      
+      const csvContent = [
+        ['Name', 'Email', 'Phone', 'Handle', 'Verified', 'Created At'],
+        ...usersToExport.map(user => [
+          user.name,
+          user.email,
+          user.phone,
+          user.handle || '',
+          user.isVerified ? 'Yes' : 'No',
+          formatDate(user.createdAt)
+        ])
+      ].map(row => row.join(',')).join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      console.log(`CSV export completed: ${usersToExport.length} users exported`);
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      // Fallback to current filtered users
+      const csvContent = [
+        ['Name', 'Email', 'Phone', 'Handle', 'Verified', 'Created At'],
+        ...filteredUsers.map(user => [
+          user.name,
+          user.email,
+          user.phone,
+          user.handle || '',
+          user.isVerified ? 'Yes' : 'No',
+          formatDate(user.createdAt)
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Authentication check
