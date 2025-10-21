@@ -415,6 +415,11 @@ function Stepper({ step }: { step: number }) {
 
 export default function Create() {
   const navigate = useNavigate();
+  
+  // Redirect to thank you page immediately - campaign is closed
+  useEffect(() => {
+    navigate('/thank-you', { replace: true });
+  }, [navigate]);
   const [step, setStep] = useState(0);
   const [authLoading, setAuthLoading] = useState(true);
   const [photoData, setPhotoData] = useState<string | null>(null);
