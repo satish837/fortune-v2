@@ -12,6 +12,7 @@ import Create from "./pages/Create";
 import VerifyOTP from "./pages/VerifyOTP";
 import Dashboard from "./pages/Dashboard";
 import TestAPI from "./pages/TestAPI";
+import ThankYou from "./pages/ThankYou";
 
 const queryClient = new QueryClient();
 
@@ -22,11 +23,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<ThankYou />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/create" element={<Create />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/test-api" element={<TestAPI />} />
+          <Route path="/thank-you" element={<ThankYou />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -201,14 +201,14 @@ export default function Index() {
       const data = await readJsonBody<{ error?: string }>(response);
 
       if (response.ok) {
-        navigate("/verify-otp", {
-          state: {
-            email: form.email,
-            name: form.name,
-            phone: form.phone,
-            handle: form.handle,
-          },
-        });
+        // Store user data and navigate directly to thank you page
+        localStorage.setItem('userData', JSON.stringify({
+          email: form.email,
+          name: form.name,
+          phone: form.phone,
+          handle: form.handle,
+        }));
+        navigate("/thank-you");
       } else {
         alert(data?.error || "Failed to send OTP. Please try again.");
       }
@@ -247,15 +247,15 @@ export default function Index() {
       }>(response);
 
       if (response.ok && data?.userData) {
-        navigate("/verify-otp", {
-          state: {
-            email: data.userData.email,
-            name: data.userData.name,
-            phone: data.userData.phone,
-            handle: data.userData.handle,
-            isExistingUser: true,
-          },
-        });
+        // Store user data and navigate directly to thank you page
+        localStorage.setItem('userData', JSON.stringify({
+          email: data.userData.email,
+          name: data.userData.name,
+          phone: data.userData.phone,
+          handle: data.userData.handle,
+          isExistingUser: true,
+        }));
+        navigate("/thank-you");
       } else {
         setExistingUserError(
           data?.error ||
